@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Personas del curso</title>
+    <style>
+      :root { --bg:#f6f8fa; --card:#fff; --border:#d0d7de; --text:#24292f; --primary:#0969da; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
+      header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:16px 20px; background: var(--card); border-bottom: 1px solid var(--border); }
+      h1 { margin:0; font-size:20px; }
+      main { max-width: 900px; margin: 20px auto; padding: 0 16px; }
+      .card { background: var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; }
+      .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+      .avatar { width:72px; height:72px; border-radius:50%; object-fit:cover; border:1px solid var(--border); }
+      ul.list { list-style:none; padding:0; margin:0; }
+      ul.list li { padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+      .muted { color:#57606a; font-size:12px; }
+      button { padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; }
+      button.primary { background: var(--primary); color:#fff; border-color: var(--primary); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Personas del curso</h1>
+      <nav class="row">
+        <a href="/admin" style="text-decoration:none"><button>Panel admin</button></a>
+        <button id="logoutBtn" class="primary">Cerrar sesión</button>
+      </nav>
+    </header>
+    <main>
+      <section class="card">
+        <header class="row"><h2 style="margin:0; font-size:16px;" id="courseTitle">Curso</h2></header>
+        <div class="row">
+          <img id="profPhoto" class="avatar" alt="Foto del profesor" />
+          <div style="flex:1; min-width:240px;">
+            <div><strong id="profName">Profesor</strong></div>
+            <div class="muted" id="profDesc">Descripción</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <header class="row"><h2 style="margin:0; font-size:16px;">Becarios</h2></header>
+        <ul id="studentsList" class="list"></ul>
+        <div id="msg" class="muted"></div>
+      </section>
+    </main>
+
+    <script>
+      const token = localStorage.getItem('access_token');
+      function authHeaders() { const h = { 'Content-Type': 'application/json' }; if (token) h['Authorization'] = `Bearer ${token}`; return h; }
+      document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem('access_token'); window.location.href = '/admin/login'; });
+
+      function getCourseIdFromPath() {
+        // URL: /course/<id>/people
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        const idx = parts.indexOf('course');
+        if (idx >= 0 && parts[idx+1]) return parseInt(parts[idx+1], 10);
+        return null;
+      }
+
+      async function loadPeople() {
+        const id = getCourseIdFromPath();
+        if (!id) { document.getElementById('msg').textContent = 'Curso desconocido'; return; }
+        const res = await fetch(`/api/courses/${id}/people`, { headers: authHeaders(), cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) { document.getElementById('msg').textContent = data.error || 'Error al cargar personas'; return; }
+        document.getElementById('courseTitle').textContent = `Curso: ${data.course?.name || data.course?.id || id}`;
+        const p = data.professor || {};
+        document.getElementById('profName').textContent = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Profesor';
+        document.getElementById('profDesc').textContent = p.description || '';
+        document.getElementById('profPhoto').src = p.profile_photo_url || '';
+        const ul = document.getElementById('studentsList'); ul.innerHTML = '';
+        (data.students || []).forEach(s => {
+          const li = document.createElement('li');
+          li.innerHTML = `<span><strong>${s.first_name} ${s.last_name}</strong><div class='muted'>${s.email || ''}</div></span><span>Becario</span>`;
+          ul.appendChild(li);
+        });
+        if (!data.students || data.students.length === 0) {
+          document.getElementById('msg').textContent = 'No hay becarios registrados en este curso';
+        } else {
+          document.getElementById('msg').textContent = '';
+        }
+      }
+
+      loadPeople();
+    </script>
+  </body>
+</html>

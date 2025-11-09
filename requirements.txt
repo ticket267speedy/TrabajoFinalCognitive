@@ -1,0 +1,16 @@
+# requirements.txt
+
+# --- Core Flask ---
+flask
+python-dotenv
+flask-sqlalchemy
+flask-migrate
+PyMySQL
+
+# --- Utilidades y Seguridad ---
+flask-cors
+flask-jwt-extended
+gunicorn
+passlib[bcrypt]
+
+# (Dependencias de IA removidas en esta versión)

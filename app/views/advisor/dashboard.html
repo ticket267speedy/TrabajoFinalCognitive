@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard Asesor</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f6f8fa; margin: 0; }
+      header { background: #24292f; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+      header h1 { font-size: 18px; margin: 0; }
+      main { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .card { background: #fff; border: 1px solid #d0d7de; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
+      .card header { background: #fff; color: #24292f; padding: 12px 16px; border-bottom: 1px solid #d0d7de; }
+      .card header h2 { font-size: 16px; margin: 0; }
+      .card .content { padding: 12px 16px; }
+      .list { list-style: none; margin: 0; padding: 0; }
+      .list li { border-bottom: 1px solid #eff2f5; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; }
+      .list li:last-child { border-bottom: none; }
+      .pill { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; }
+      .pill.green { background: #daf5dc; color: #1a7f37; }
+      .pill.gray { background: #eaeef2; color: #57606a; }
+      button { padding: 6px 10px; border: 0; border-radius: 8px; background: #0969da; color: #fff; font-weight: 600; cursor: pointer; }
+      button.secondary { background: #6c757d; }
+      .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+      input[type="search"] { width: 100%; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 14px; }
+      .msg { margin-top: 8px; font-size: 13px; }
+      .msg.error { color: #d1242f; }
+      .msg.success { color: #1a7f37; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Dashboard del Asesor</h1>
+      <nav>
+        <button id="logoutBtn" class="secondary">Cerrar sesión</button>
+      </nav>
+    </header>
+    <main>
+      <div class="grid">
+        <section class="card" aria-labelledby="becariosTitle">
+          <header><h2 id="becariosTitle">Becarios</h2></header>
+          <div class="content">
+            <div class="toolbar">
+              <input id="searchStudents" type="search" placeholder="Buscar por nombre o email" />
+              <button id="refreshStudents" class="secondary">Actualizar</button>
+            </div>
+            <ul id="studentsList" class="list" aria-live="polite"></ul>
+            <div id="studentsMsg" class="msg"></div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="alertsTitle">
+          <header><h2 id="alertsTitle">Alertas</h2></header>
+          <div class="content">
+            <div class="toolbar">
+              <button id="refreshAlerts" class="secondary">Actualizar</button>
+            </div>
+            <ul id="alertsList" class="list" aria-live="polite"></ul>
+            <div id="alertsMsg" class="msg"></div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem('access_token');
+      function authHeaders() {
+        const h = { 'Content-Type': 'application/json' };
+        if (token) h['Authorization'] = `Bearer ${token}`;
+        return h;
+      }
+
+      // Render helpers
+      function renderStudents(items) {
+        const list = document.getElementById('studentsList');
+        list.innerHTML = '';
+        if (!items || items.length === 0) {
+          list.innerHTML = '<li>No hay becarios para mostrar.</li>';
+          return;
+        }
+        for (const s of items) {
+          const li = document.createElement('li');
+          const name = `${s.first_name || ''} ${s.last_name || ''}`.trim();
+          li.innerHTML = `
+            <span>
+              <strong>${name || '(Sin nombre)'}</strong>
+              <span class="pill green" style="margin-left:8px;">Becario</span>
+              <div style="font-size:12px;color:#57606a;">${s.email || ''}</div>
+            </span>
+            <span>
+              <button class="secondary" onclick="viewStudent(${s.id})">Ver</button>
+            </span>
+          `;
+          list.appendChild(li);
+        }
+      }
+
+      function renderAlerts(items) {
+        const list = document.getElementById('alertsList');
+        list.innerHTML = '';
+        if (!items || items.length === 0) {
+          list.innerHTML = '<li>No hay alertas.</li>';
+          return;
+        }
+        for (const a of items) {
+          const li = document.createElement('li');
+          const name = `${a.student_first_name || ''} ${a.student_last_name || ''}`.trim();
+          const status = a.is_read ? '<span class="pill gray">Leída</span>' : '<span class="pill green">Nueva</span>';
+          li.innerHTML = `
+            <span>
+              <strong>${name || '(Becario)'}</strong>
+              <div style="font-size:12px;color:#57606a;">${a.message || 'Alerta'}</div>
+            </span>
+            <span>
+              ${status}
+              ${a.is_read ? '' : `<button onclick="markAlertRead(${a.id})" style="margin-left:8px;">Marcar leído</button>`}
+            </span>
+          `;
+          list.appendChild(li);
+        }
+      }
+
+      // API calls
+      async function fetchStudents() {
+        const msg = document.getElementById('studentsMsg');
+        msg.textContent = '';
+        try {
+          const res = await fetch('/api/asesores/students?scholarship=true', { headers: authHeaders() });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || 'Error al cargar becarios');
+          renderStudents(data.items || data.students || []);
+        } catch (err) {
+          msg.textContent = err.message || 'Error al cargar becarios';
+          msg.className = 'msg error';
+        }
+      }
+
+      // Filtra solo alertas de asistencia (faltas o poco tiempo en clase)
+      function isAttendanceAlert(message) {
+        const msg = (message || '').toLowerCase();
+        const includeKeywords = [
+          'falta', // faltas
+          'asistencia',
+          'entrada',
+          'salida',
+          'tardanza',
+          'minutos',
+          'horas',
+          'tiempo',
+        ];
+        const excludeKeywords = [
+          'rendimiento', // bajo rendimiento en evaluaciones
+          'evaluacion', 'evaluaciones',
+          'laboratorio',
+          'apoyo',
+        ];
+        if (excludeKeywords.some(k => msg.includes(k))) return false;
+        return includeKeywords.some(k => msg.includes(k));
+      }
+
+      async function fetchAlerts() {
+        const msg = document.getElementById('alertsMsg');
+        msg.textContent = '';
+        try {
+          const res = await fetch('/api/alerts?scholarship=true', { headers: authHeaders() });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || 'Error al cargar alertas');
+          const items = data.items || data.alerts || [];
+          const filtered = items.filter(a => isAttendanceAlert(a.message));
+          renderAlerts(filtered);
+        } catch (err) {
+          msg.textContent = err.message || 'Error al cargar alertas';
+          msg.className = 'msg error';
+        }
+      }
+
+      async function markAlertRead(id) {
+        try {
+          const res = await fetch(`/api/alerts/${id}/read`, { method: 'PATCH', headers: authHeaders() });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'No se pudo marcar como leído');
+          }
+          await fetchAlerts();
+        } catch (err) {
+          const msg = document.getElementById('alertsMsg');
+          msg.textContent = err.message;
+          msg.className = 'msg error';
+        }
+      }
+
+      window.viewStudent = function(id) {
+        alert('Detalle de becario ' + id + ' (pendiente de implementar)');
+      };
+
+      document.getElementById('refreshStudents').addEventListener('click', fetchStudents);
+      document.getElementById('refreshAlerts').addEventListener('click', fetchAlerts);
+      document.getElementById('searchStudents').addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const items = Array.from(document.querySelectorAll('#studentsList li'));
+        for (const li of items) {
+          li.style.display = li.textContent.toLowerCase().includes(term) ? '' : 'none';
+        }
+      });
+
+      // Initial load
+      fetchStudents();
+      fetchAlerts();
+
+
+      // Logout
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('access_token');
+        window.location.href = '/login';
+      });
+    </script>
+  </body>
+  </html>

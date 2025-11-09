@@ -1,0 +1,1 @@
+"""Paquete de vistas (plantillas/representación si aplica)."""

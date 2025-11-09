@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sesión Activa</title>
+    <style>
+      :root { --bg:#f6f8fa; --card:#fff; --border:#d0d7de; --text:#24292f; --primary:#0969da; --danger:#d1242f; --success:#1a7f37; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
+      header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:16px 20px; background: var(--card); border-bottom: 1px solid var(--border); }
+      h1 { margin:0; font-size:20px; }
+      main { max-width: 1000px; margin: 20px auto; padding: 0 16px; }
+      .grid { display:grid; grid-template-columns: 1.2fr 0.8fr; gap:16px; }
+      .card { background: var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; }
+      .list { list-style:none; padding:0; margin:0; }
+      .list li { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; }
+      .badge { padding:4px 8px; border-radius:999px; font-size:12px; }
+      .badge.absent { color:#fff; background: var(--danger); }
+      .badge.present { color:#fff; background: var(--success); }
+      .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+      button { padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; }
+      button.primary { background: var(--primary); color:#fff; border-color: var(--primary); }
+      video, canvas { width:100%; max-width: 480px; border-radius:10px; border:1px solid var(--border); }
+      .muted { color:#57606a; font-size:12px; }
+      .course-title { font-weight:600; font-size:16px; color: var(--text); }
+      /* Estilo de títulos de sección como recuadro negro, ancho completo */
+      .card header h2 { margin:0 0 10px; font-size:16px; border:2px solid #000; padding:6px 10px; border-radius:6px; background:#f0f2f5; display:block; width:100%; }
+    </style>
+  </head>
+  <body data-course-id="{{ course_id }}">
+    <header>
+      <h1>Sesión Activa del Curso</h1>
+      <nav class="row">
+        <a href="/admin" style="text-decoration:none"><button>Volver al panel</button></a>
+      </nav>
+    </header>
+    <main>
+      <section class="card">
+        <div id="courseInfo" class="course-title">Cargando curso…</div>
+        <div id="sessionInfo" class="muted" style="margin-top:6px;">Verificando sesión activa…</div>
+      </section>
+
+      <div class="grid" style="margin-top:16px;">
+        <section class="card">
+          <header class="row" style="justify-content:space-between;">
+            <h2 style="margin:0; font-size:16px;">Alumnos del curso</h2>
+            <div class="muted">Estado cambia rojo→verde al detectar presencia</div>
+          </header>
+          <ul id="studentsList" class="list"></ul>
+          <div id="studentsMsg" class="muted"></div>
+          <!-- Selector oculto para compatibilidad con JS existente -->
+          <select id="studentSelect" style="display:none"></select>
+        </section>
+
+        <!-- Cámara local (vista previa) -->
+        <section class="card">
+          <header><h2 style="margin:0; font-size:16px;">Cámara</h2></header>
+          <div class="row" style="margin-bottom:8px;">
+            <button id="startCam" class="primary">Iniciar cámara</button>
+            <button id="stopCam">Detener cámara</button>
+          </div>
+          <video id="videoPreview" autoplay playsinline></video>
+          <div id="cameraMsg" class="muted">Cámara no iniciada</div>
+        </section>
+      </div>
+
+    </main>
+
+    <script>
+      // Parámetro inyectado por servidor (Jinja)
+      // Leer course_id desde atributo data para evitar error de preview estático
+      const COURSE_ID = Number(document.body.dataset.courseId || 0);
+      const token = localStorage.getItem('access_token');
+      function authHeadersJSON() { const h = { 'Content-Type': 'application/json' }; if (token) h['Authorization'] = `Bearer ${token}`; return h; }
+      function authHeadersForm() { const h = {}; if (token) h['Authorization'] = `Bearer ${token}`; return h; }
+
+      let ACTIVE_SESSION_ID = null;
+      const stateMap = new Map(); // student_id -> 'present' | 'absent'
+
+      async function loadCourseAndStudents() {
+        const res = await fetch(`/api/admin/courses/${COURSE_ID}/students`, { headers: authHeadersJSON(), cache: 'no-store' });
+        const data = await res.json();
+        if (res.status === 401) { document.getElementById('courseInfo').textContent = 'No autorizado'; setTimeout(() => { window.location.href = '/login'; }, 800); return; }
+        if (!res.ok) { document.getElementById('courseInfo').textContent = data.error || 'Error al cargar curso'; return; }
+        document.getElementById('courseInfo').innerHTML = `Curso: <strong>${data.course.name}</strong> <span class="muted">#${data.course.id}</span>`;
+        document.getElementById('courseInfo').style.display = '';
+        const ul = document.getElementById('studentsList');
+        ul.innerHTML = '';
+        (data.students || []).forEach(s => {
+          stateMap.set(String(s.id), 'absent');
+          const li = document.createElement('li');
+          li.setAttribute('data-id', s.id);
+          li.innerHTML = `
+            <div>
+              <strong>${s.first_name} ${s.last_name}</strong>
+              <div class="muted">${s.email || '-'}</div>
+            </div>
+            <div class="row">
+              <span class="badge absent" data-badge="${s.id}">Ausente</span>
+              <button class="mark-manual" data-id="${s.id}">Marcar presente</button>
+            </div>`;
+          ul.appendChild(li);
+        });
+        
+        // Poblar select de estudiantes para entrenamiento
+        const select = document.getElementById('studentSelect');
+        select.innerHTML = '<option value="">Seleccionar estudiante para entrenar...</option>';
+        (data.students || []).forEach(s => {
+          const option = document.createElement('option');
+          option.value = s.id;
+          option.textContent = `${s.first_name} ${s.last_name}`;
+          select.appendChild(option);
+        });
+      }
+
+      async function checkActiveSession() {
+        const res = await fetch(`/api/admin/courses/${COURSE_ID}/session/active`, { headers: authHeadersJSON(), cache: 'no-store' });
+        const data = await res.json();
+        if (res.status === 401) { document.getElementById('sessionInfo').textContent = 'No autorizado'; setTimeout(() => { window.location.href = '/login'; }, 800); return; }
+        if (!res.ok) { document.getElementById('sessionInfo').textContent = data.error || 'Error al verificar sesión'; return; }
+        if (data.active && data.session && data.session.id) {
+          ACTIVE_SESSION_ID = data.session.id;
+          document.getElementById('sessionInfo').textContent = `Sesión activa #${ACTIVE_SESSION_ID}`;
+        } else {
+          document.getElementById('sessionInfo').textContent = 'No hay sesión activa. Vuelve y presiona "Iniciar sesión" en el panel.';
+        }
+      }
+
+      function hideLoadingMessages() {
+        // Mantiene visible el título del curso y oculta solo el estado de sesión
+        const info2 = document.getElementById('sessionInfo');
+        if (ACTIVE_SESSION_ID || info2.textContent.startsWith('No hay sesión activa')) {
+          info2.style.display = 'none';
+        }
+      }
+
+      function setPresent(studentId) {
+        const id = String(studentId);
+        stateMap.set(id, 'present');
+        const badge = document.querySelector(`[data-badge="${id}"]`);
+        if (badge) { badge.textContent = 'Presente'; badge.classList.remove('absent'); badge.classList.add('present'); }
+      }
+
+      async function manualMark(studentId) {
+        if (!ACTIVE_SESSION_ID) { document.getElementById('studentsMsg').textContent = 'No hay sesión activa.'; return; }
+        const res = await fetch('/api/admin/attendance/manual', {
+          method: 'POST',
+          headers: authHeadersJSON(),
+          body: JSON.stringify({ session_id: ACTIVE_SESSION_ID, student_id: studentId, course_id: COURSE_ID })
+        });
+        const data = await res.json();
+        if (res.ok) { setPresent(studentId); document.getElementById('studentsMsg').textContent = 'Asistencia marcada manualmente'; }
+        else { document.getElementById('studentsMsg').textContent = data.error || 'No se pudo marcar asistencia'; }
+      }
+
+      document.getElementById('studentsList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.mark-manual');
+        if (!btn) return;
+        const id = btn.getAttribute('data-id');
+        manualMark(id);
+      });
+
+
+      // Bootstrap
+      (async function init() {
+        // Mostrar mensajes de carga iniciales
+        document.getElementById('courseInfo').textContent = 'Cargando curso…';
+        document.getElementById('sessionInfo').textContent = 'Verificando sesión activa…';
+        await Promise.all([loadCourseAndStudents(), checkActiveSession()]);
+        // Integración de IA removida: no se carga reconocimiento facial ni cámara
+        hideLoadingMessages();
+      })();
+
+      // =====================
+      // Cámara del navegador
+      // =====================
+      let mediaStream = null;
+      async function startCamera() {
+        const msg = document.getElementById('cameraMsg');
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            msg.textContent = 'getUserMedia no está disponible en este navegador.';
+            return;
+          }
+          mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          const video = document.getElementById('videoPreview');
+          video.srcObject = mediaStream;
+          msg.textContent = 'Cámara iniciada';
+        } catch (e) {
+          msg.textContent = 'No se pudo iniciar la cámara: ' + (e.message || e);
+        }
+      }
+      function stopCamera() {
+        const msg = document.getElementById('cameraMsg');
+        const video = document.getElementById('videoPreview');
+        try {
+          if (mediaStream) {
+            mediaStream.getTracks().forEach(t => t.stop());
+            mediaStream = null;
+          }
+          video.srcObject = null;
+          msg.textContent = 'Cámara detenida';
+        } catch (e) {
+          msg.textContent = 'Error al detener cámara: ' + (e.message || e);
+        }
+      }
+      document.getElementById('startCam').addEventListener('click', startCamera);
+      document.getElementById('stopCam').addEventListener('click', stopCamera);
+    </script>
+  </body>
+</html>

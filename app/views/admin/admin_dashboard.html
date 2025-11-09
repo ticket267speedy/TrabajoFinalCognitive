@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Panel Administrador</title>
+    <style>
+      :root { --bg: #f6f8fa; --card: #fff; --border: #d0d7de; --primary: #0969da; --text: #24292f; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
+      header { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border); }
+      h1 { margin: 0; font-size: 20px; }
+      main { padding: 20px; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+      .card header h2 { margin: 0 0 10px; font-size: 16px; border: 2px solid #000; padding: 6px 10px; border-radius: 6px; background: #f0f2f5; display:block; width:100%; }
+      .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+      .toolbar > * { flex: 1 1 140px; min-width: 120px; }
+      input, select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+      button { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; }
+      button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+      .list { list-style: none; padding: 0; margin: 0; }
+      .list li { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+      .msg { margin-top: 8px; font-size: 14px; }
+      .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+      .muted { color: #57606a; font-size: 12px; }
+      @media (max-width: 900px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Panel Administrador</h1>
+      <nav class="row">
+        <a href="/admin/profile" style="text-decoration:none"><button type="button">Configuración</button></a>
+        <button id="logoutBtn" class="primary">Cerrar sesión</button>
+      </nav>
+    </header>
+    <main>
+      <div class="grid">
+        <!-- Estudiantes -->
+        <section class="card">
+          <header><h2>Estudiantes</h2></header>
+          <div class="toolbar">
+            <select id="filterScholarship">
+              <option value="">Todos</option>
+              <option value="true">Becarios</option>
+              <option value="false">No becarios</option>
+            </select>
+            <button id="refreshStudents">Actualizar</button>
+          </div>
+          <ul id="studentsList" class="list"></ul>
+          <div class="toolbar">
+            <input id="newStudentFirst" placeholder="Nombres" />
+            <input id="newStudentLast" placeholder="Apellidos" />
+            <input id="newStudentEmail" placeholder="Email" />
+            <select id="newStudentScholarship">
+              <option value="false">No becario</option>
+              <option value="true">Becario</option>
+            </select>
+            <button id="addStudent" class="primary">Agregar</button>
+          </div>
+          <div id="studentsMsg" class="msg"></div>
+        </section>
+
+        <!-- Cursos (solo lectura) -->
+        <section class="card">
+          <header><h2>Cursos</h2></header>
+          <ul id="coursesList" class="list"></ul>
+          <div id="coursesMsg" class="msg"></div>
+        </section>
+
+        <!-- Sesión de clase -->
+        <section class="card">
+          <header><h2>Sesión de clase</h2></header>
+          <div class="toolbar">
+            <select id="sessionCourseSelect"></select>
+            <button id="checkSession">Ver sesión activa</button>
+            <button id="startSession" class="primary">Iniciar sesión</button>
+            <button id="endSession">Finalizar sesión</button>
+          </div>
+          <div class="muted">Al iniciar, la cámara marcará tardanza a quienes lleguen después.</div>
+          <div id="sessionMsg" class="msg"></div>
+        </section>
+
+        <!-- Attendance Summary -->
+        <section class="card">
+          <header><h2>Attendance Summary</h2></header>
+          <div class="toolbar">
+            <input id="summariesSessionId" placeholder="session_id" />
+            <button id="loadSummaries">Cargar</button>
+          </div>
+          <ul id="summariesList" class="list"></ul>
+          <div id="summariesMsg" class="msg"></div>
+        </section>
+
+        <!-- Invitaciones a asesores -->
+        <section class="card">
+          <header><h2>Invitar asesor</h2></header>
+          <div class="toolbar">
+            <select id="inviteCourseSelect"></select>
+            <input id="inviteEmail" type="email" placeholder="asesor@demo.com" />
+            <button id="sendInvite" class="primary">Enviar invitación</button>
+          </div>
+          <div id="inviteMsg" class="msg"></div>
+        </section>
+
+        <!-- Asistente IA (Gemini) -->
+        <section class="card" aria-labelledby="chatbotTitle">
+          <header>
+            <h2 id="chatbotTitle">Asistente IA (Gemini)</h2>
+            <div class="muted">Soporte para becas y docente</div>
+          </header>
+          <div class="content">
+            <div class="toolbar">
+              <input id="chatbotInput" type="text" placeholder="Pregunta sobre becas, cursos, asistencia…" />
+              <button id="chatbotSend" class="primary">Enviar</button>
+              <button id="chatbotReset">Reiniciar</button>
+            </div>
+            <ul id="chatbotList" class="list" aria-live="polite"></ul>
+            <div id="chatbotMsg" class="msg"></div>
+          </div>
+        </section>
+
+        <!-- Configuración Perfil -->
+        <section class="card" id="configSection" style="display:none;">
+          <header><h2>Configuración de perfil</h2></header>
+          <div class="toolbar">
+            <input id="profileName" placeholder="Nombre" disabled />
+            <input id="profileEmail" placeholder="Email" disabled />
+          </div>
+          <div class="toolbar">
+            <input id="profileDescription" placeholder="Descripción" />
+            <input id="profilePhoto" type="file" accept="image/*" />
+            <button id="saveProfile" class="primary">Guardar</button>
+          </div>
+          <div class="row">
+            <img id="profilePhotoPreview" alt="Foto de perfil" style="max-height:100px; border-radius:8px; border:1px solid var(--border);" />
+          </div>
+          <div id="profileMsg" class="msg"></div>
+          <div>
+            <h3 style="margin-top:12px;">Cursos del profesor</h3>
+            <ul id="profileCourses" class="list"></ul>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const token = localStorage.getItem('access_token');
+      function authHeaders() {
+        const h = { 'Content-Type': 'application/json' };
+        if (token) h['Authorization'] = `Bearer ${token}`;
+        return h;
+      }
+
+      // --- Navbar actions ---
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('access_token');
+        window.location.href = '/admin/login';
+      });
+      // Configuración se abre ahora en página aparte (/admin/profile)
+
+      // --- Students ---
+      async function loadStudents() {
+        const scholarship = document.getElementById('filterScholarship').value;
+        const url = '/api/admin/students' + (scholarship ? `?scholarship=${scholarship}` : '');
+        const res = await fetch(url, { headers: authHeaders(), cache: 'no-store' });
+        const data = await res.json();
+        const list = document.getElementById('studentsList');
+        list.innerHTML = '';
+        if (res.ok && Array.isArray(data.items)) {
+          data.items.forEach(s => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+              <div>
+                <strong>${s.first_name} ${s.last_name}</strong>
+                <div class="muted">${s.email || '-'} | ${s.is_scholarship_student ? 'Becario' : 'No becario'}</div>
+                <div class="muted">Cursos: ${(Array.isArray(s.courses) && s.courses.length) ? s.courses.join(', ') : '-'}</div>
+              </div>
+              <div class="row">
+                <button data-id="${s.id}" class="edit-student">Editar</button>
+                <button data-id="${s.id}" class="delete-student">Eliminar</button>
+              </div>`;
+            list.appendChild(li);
+          });
+        } else {
+          document.getElementById('studentsMsg').textContent = data.error || 'Error al cargar estudiantes';
+        }
+      }
+      document.getElementById('refreshStudents').addEventListener('click', loadStudents);
+      document.getElementById('filterScholarship').addEventListener('change', loadStudents);
+      document.getElementById('addStudent').addEventListener('click', async () => {
+        const payload = {
+          first_name: document.getElementById('newStudentFirst').value.trim(),
+          last_name: document.getElementById('newStudentLast').value.trim(),
+          email: document.getElementById('newStudentEmail').value.trim() || null,
+          is_scholarship_student: document.getElementById('newStudentScholarship').value === 'true'
+        };
+        const res = await fetch('/api/admin/students', { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
+        const data = await res.json();
+        document.getElementById('studentsMsg').textContent = res.ok ? 'Estudiante agregado' : (data.error || 'Error');
+        if (res.ok) loadStudents();
+      });
+      document.getElementById('studentsList').addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        if (!id) return;
+        if (e.target.classList.contains('delete-student')) {
+          const res = await fetch(`/api/admin/students/${id}`, { method: 'DELETE', headers: authHeaders() });
+          const data = await res.json();
+          document.getElementById('studentsMsg').textContent = res.ok ? 'Eliminado' : (data.error || 'Error');
+          if (res.ok) loadStudents();
+        }
+        if (e.target.classList.contains('edit-student')) {
+          const first = prompt('Nuevo nombre:');
+          const last = prompt('Nuevos apellidos:');
+          const email = prompt('Nuevo email (opcional):');
+          const res = await fetch(`/api/admin/students/${id}`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ first_name: first, last_name: last, email }) });
+          const data = await res.json();
+          document.getElementById('studentsMsg').textContent = res.ok ? 'Actualizado' : (data.error || 'Error');
+          if (res.ok) loadStudents();
+        }
+      });
+
+      // --- Courses ---
+      async function loadCourses() {
+        const res = await fetch('/api/admin/courses', { headers: authHeaders() });
+        const data = await res.json();
+        const list = document.getElementById('coursesList');
+        const select1 = document.getElementById('sessionCourseSelect');
+        const select2 = document.getElementById('inviteCourseSelect');
+        list.innerHTML = '';
+        select1.innerHTML = '';
+        select2.innerHTML = '';
+        if (res.ok && Array.isArray(data.items)) {
+          data.items.forEach(c => {
+            const li = document.createElement('li');
+            li.innerHTML = `<div><strong>${c.name}</strong> <span class="muted">#${c.id}</span></div>`;
+            list.appendChild(li);
+            const opt1 = new Option(c.name, c.id);
+            const opt2 = new Option(c.name, c.id);
+            select1.add(opt1);
+            select2.add(opt2);
+          });
+        } else {
+          document.getElementById('coursesMsg').textContent = data.error || 'Error al cargar cursos';
+        }
+      }
+      // Eliminado botón de refrescar cursos: loadCourses se llama en bootstrap
+
+      // --- Session Control ---
+      document.getElementById('checkSession').addEventListener('click', async () => {
+        const courseId = document.getElementById('sessionCourseSelect').value;
+        if (!courseId) return;
+        const res = await fetch(`/api/admin/courses/${courseId}/session/active`, { headers: authHeaders() });
+        const data = await res.json();
+        if (res.status === 401) {
+          document.getElementById('sessionMsg').textContent = 'No autorizado: inicia sesión como administrador';
+          return;
+        }
+        if (data.active && data.session && data.session.id) {
+          // Redirigir a la página de sesión activa del curso
+          window.location.href = `/admin/course/${courseId}/session`;
+        } else {
+          document.getElementById('sessionMsg').textContent = 'Sin sesión activa';
+        }
+      });
+      document.getElementById('startSession').addEventListener('click', async () => {
+        const courseId = document.getElementById('sessionCourseSelect').value;
+        if (!courseId) return;
+        const res = await fetch(`/api/admin/courses/${courseId}/session/start`, { method: 'POST', headers: authHeaders() });
+        const data = await res.json();
+        if (res.status === 401) {
+          document.getElementById('sessionMsg').textContent = 'No autorizado: inicia sesión como administrador';
+          return;
+        }
+        document.getElementById('sessionMsg').textContent = res.ok ? `Sesión iniciada #${data.session_id}` : (data.error || 'Error');
+      });
+      document.getElementById('endSession').addEventListener('click', async () => {
+        const courseId = document.getElementById('sessionCourseSelect').value;
+        if (!courseId) return;
+        const res = await fetch(`/api/admin/courses/${courseId}/session/end`, { method: 'POST', headers: authHeaders() });
+        const data = await res.json();
+        if (res.status === 401) {
+          document.getElementById('sessionMsg').textContent = 'No autorizado: inicia sesión como administrador';
+          return;
+        }
+        document.getElementById('sessionMsg').textContent = res.ok ? `Sesión finalizada #${data.session_id}` : (data.error || 'Error');
+      });
+
+      // Guardia de rol: si el token no es de admin, redirecciona a login
+      async function assertAdminOrRedirect() {
+        try {
+          const res = await fetch('/api/admin/profile', { headers: authHeaders(), cache: 'no-store' });
+          if (res.status === 401) {
+            document.getElementById('sessionMsg').textContent = 'No autorizado: inicia sesión como administrador';
+            setTimeout(() => { window.location.href = '/login'; }, 1200);
+          }
+        } catch (e) {
+          // silencio: mostramos mensaje genérico
+        }
+      }
+
+      assertAdminOrRedirect();
+
+      // --- Summaries ---
+      async function loadSummaries() {
+        const sessionId = document.getElementById('summariesSessionId').value.trim();
+        const url = '/api/admin/summaries' + (sessionId ? `?session_id=${sessionId}` : '');
+        const res = await fetch(url, { headers: authHeaders() });
+        const data = await res.json();
+        const list = document.getElementById('summariesList');
+        list.innerHTML = '';
+        if (res.ok && Array.isArray(data.items)) {
+          data.items.forEach(a => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+              <div>
+                Alumno #${a.student_id} | Sesión #${a.session_id}
+                <div class="muted">Presencia: ${a.presence_percentage}% ${a.is_manual_override ? '(Manual)' : ''}</div>
+              </div>
+              <div class="row">
+                <button data-id="${a.id}" class="edit-summary">Editar</button>
+              </div>`;
+            list.appendChild(li);
+          });
+        } else {
+          document.getElementById('summariesMsg').textContent = data.error || 'Error al cargar summaries';
+        }
+      }
+      document.getElementById('loadSummaries').addEventListener('click', loadSummaries);
+      document.getElementById('summariesList').addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        if (!id) return;
+        if (e.target.classList.contains('edit-summary')) {
+          const percentage = prompt('Nuevo porcentaje de presencia (0-100):');
+          const override = confirm('Marcar como manual override?');
+          const res = await fetch(`/api/admin/summaries/${id}`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ presence_percentage: Number(percentage), is_manual_override: override }) });
+          const data = await res.json();
+          document.getElementById('summariesMsg').textContent = res.ok ? 'Actualizado' : (data.error || 'Error');
+          if (res.ok) loadSummaries();
+        }
+      });
+
+      // --- Invitations ---
+      document.getElementById('sendInvite').addEventListener('click', async () => {
+        const courseId = document.getElementById('inviteCourseSelect').value;
+        const email = document.getElementById('inviteEmail').value.trim();
+        if (!courseId || !email) return;
+        const res = await fetch(`/api/admin/courses/${courseId}/advisor-invitations`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ email }) });
+        const data = await res.json();
+        document.getElementById('inviteMsg').textContent = res.ok ? 'Invitación enviada' : (data.error || 'Error');
+      });
+
+
+      // bootstrap
+      loadStudents();
+      loadCourses();
+
+      // --- Profile ---
+      async function loadProfile() {
+        const res = await fetch('/api/admin/profile', { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) {
+          document.getElementById('profileMsg').textContent = data.error || 'Error al cargar perfil';
+          return;
+        }
+        document.getElementById('profileName').value = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+        document.getElementById('profileEmail').value = data.email || '';
+        document.getElementById('profileDescription').value = data.description || '';
+        document.getElementById('profilePhotoPreview').src = data.profile_photo_url ? data.profile_photo_url : '';
+        const ul = document.getElementById('profileCourses');
+        ul.innerHTML = '';
+        (data.courses || []).forEach(c => {
+          const li = document.createElement('li');
+          li.textContent = c.name;
+          ul.appendChild(li);
+        });
+      }
+      document.getElementById('saveProfile').addEventListener('click', async () => {
+        const description = document.getElementById('profileDescription').value.trim();
+        let ok = true;
+        // Save description
+        const res1 = await fetch('/api/admin/profile', { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ description }) });
+        ok = ok && res1.ok;
+        // Save photo if chosen
+        const file = document.getElementById('profilePhoto').files[0];
+        if (file) {
+          const fd = new FormData();
+          fd.append('photo', file);
+          const res2 = await fetch('/api/admin/profile/photo', { method: 'POST', headers: { 'Authorization': authHeaders()['Authorization'] }, body: fd });
+          ok = ok && res2.ok;
+        }
+        document.getElementById('profileMsg').textContent = ok ? 'Perfil actualizado' : 'Error al guardar perfil';
+        if (ok) loadProfile();
+      });
+    </script>
+  </body>
+</html>

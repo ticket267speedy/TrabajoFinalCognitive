@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Registro de Asesor</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f6f8fa; margin: 0; }
+      .container { max-width: 480px; margin: 6vh auto; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+      h1 { font-size: 20px; margin: 0 0 16px; }
+      label { display: block; font-size: 14px; margin: 12px 0 6px; }
+      input { width: 100%; padding: 10px 12px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 14px; }
+      button { width: 100%; margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 8px; background: #0969da; color: #fff; font-weight: 600; cursor: pointer; }
+      button:disabled { opacity: 0.6; cursor: default; }
+      .msg { margin-top: 12px; font-size: 14px; }
+      .msg.error { color: #d1242f; }
+      .msg.success { color: #1a7f37; }
+      .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+      a { color: #0969da; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Registro de Asesor</h1>
+      <form id="registerForm">
+        <label for="nombres">Nombres</label>
+        <input id="nombres" name="nombres" type="text" required placeholder="Tus nombres" />
+
+        <label for="apellidos">Apellidos</label>
+        <input id="apellidos" name="apellidos" type="text" required placeholder="Tus apellidos" />
+
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required placeholder="tu@correo.com" />
+
+        <label for="password">Contraseña</label>
+        <input id="password" name="password" type="password" required placeholder="••••••" />
+
+        <button id="submitBtn" type="submit">Registrarme</button>
+        <div id="message" class="msg" aria-live="polite"></div>
+        <div class="actions">
+          <span>¿Ya tienes cuenta?</span>
+          <a href="/login">Ingresar</a>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      const form = document.getElementById('registerForm');
+      const messageEl = document.getElementById('message');
+      const submitBtn = document.getElementById('submitBtn');
+
+      function setMessage(text, kind = 'error') {
+        messageEl.textContent = text || '';
+        messageEl.className = `msg ${kind}`;
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setMessage('');
+
+        const nombres = document.getElementById('nombres').value.trim();
+        const apellidos = document.getElementById('apellidos').value.trim();
+        const email = document.getElementById('email').value.trim().toLowerCase();
+        const password = document.getElementById('password').value;
+
+        if (!nombres || !apellidos || !email || !password) {
+          setMessage('Por favor completa todos los campos.');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        try {
+          const res = await fetch('/api/asesores/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ first_name: nombres, last_name: apellidos, email, password })
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (res.status === 201) {
+            alert('Registro exitoso');
+            window.location.href = '/login';
+          } else {
+            setMessage(data.error || 'No se pudo completar el registro.');
+          }
+        } catch (err) {
+          setMessage('Error de red. Intenta nuevamente.');
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+  </html>
