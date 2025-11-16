@@ -9,7 +9,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 # Importaciones pesadas movidas a importación perezosa dentro de funciones
 # para evitar que errores de dependencias bloqueen el arranque de la app.
 from ..models import Student, Alert
-from ..models import User, Course, Enrollment, ClassSession, AttendanceSummary, AdvisorCourseLink
+from ..models import User, Course, Enrollment, ClassSession, AttendanceSummary, AdvisorCourseLink, GuardianStudentLink, ClientPreference
 import os
 from werkzeug.utils import secure_filename
 # Chatbot deshabilitado
@@ -896,3 +896,114 @@ def universal_login():
             }), 200
 
     return jsonify({"error": "No autorizado"}), 401
+
+
+# ==================== Client: Perfil y datos vinculados ====================
+
+@api_bp.get("/client/me")
+@jwt_required()
+def client_me():
+    """Devuelve información del usuario cliente y sus preferencias."""
+    if not _require_role("client"):
+        return jsonify({"error": "No autorizado"}), 401
+    user_id = _normalize_identity(get_jwt_identity())
+    user = User.query.get_or_404(user_id)
+    # Preferencias: crear por defecto si no existe
+    pref = ClientPreference.query.filter_by(user_id=user.id).first()
+    if not pref:
+        pref = ClientPreference(user_id=user.id)
+        db.session.add(pref)
+        db.session.commit()
+    role_value = user.role if not hasattr(user.role, 'value') else user.role.value
+    return jsonify({
+        "id": user.id,
+        "email": user.email,
+        "role": role_value,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "preferences": {
+            "notifications_enabled": pref.notifications_enabled,
+            "allow_data_sharing": pref.allow_data_sharing,
+            "theme": pref.theme,
+        }
+    }), 200
+
+
+@api_bp.get("/client/children")
+@jwt_required()
+def client_children():
+    """Lista estudiantes vinculados al usuario cliente."""
+    if not _require_role("client"):
+        return jsonify({"error": "No autorizado"}), 401
+    user_id = _normalize_identity(get_jwt_identity())
+    links = GuardianStudentLink.query.filter_by(guardian_user_id=user_id).all()
+    items = []
+    for link in links:
+        s = Student.query.get(link.student_id)
+        if not s:
+            continue
+        items.append({
+            "id": s.id,
+            "first_name": s.first_name,
+            "last_name": s.last_name,
+            "email": s.email,
+            "is_scholarship_student": s.is_scholarship_student,
+            "relationship": link.relationship,
+        })
+    return jsonify({"items": items}), 200
+
+
+@api_bp.get("/client/alerts")
+@jwt_required()
+def client_alerts():
+    """Lista alertas destacadas para los hijos vinculados."""
+    if not _require_role("client"):
+        return jsonify({"error": "No autorizado"}), 401
+    user_id = _normalize_identity(get_jwt_identity())
+    links = GuardianStudentLink.query.filter_by(guardian_user_id=user_id).all()
+    student_ids = [l.student_id for l in links]
+    q = Alert.query
+    if student_ids:
+        q = q.filter(Alert.student_id.in_(student_ids))
+    alerts = q.order_by(Alert.created_at.desc()).limit(20).all()
+    items = []
+    for a in alerts:
+        course = Course.query.get(a.course_id) if a.course_id else None
+        items.append({
+            "id": a.id,
+            "student_id": a.student_id,
+            "course_id": a.course_id,
+            "course_name": getattr(course, 'name', None),
+            "message": a.message,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+            "is_read": a.is_read,
+        })
+    return jsonify({"items": items}), 200
+
+
+@api_bp.patch("/client/preferences")
+@jwt_required()
+def client_preferences_patch():
+    """Actualiza preferencias del cliente."""
+    if not _require_role("client"):
+        return jsonify({"error": "No autorizado"}), 401
+    user_id = _normalize_identity(get_jwt_identity())
+    pref = ClientPreference.query.filter_by(user_id=user_id).first()
+    if not pref:
+        pref = ClientPreference(user_id=user_id)
+        db.session.add(pref)
+    data = request.get_json(silent=True) or {}
+    if "notifications_enabled" in data:
+        pref.notifications_enabled = bool(data.get("notifications_enabled"))
+    if "allow_data_sharing" in data:
+        pref.allow_data_sharing = bool(data.get("allow_data_sharing"))
+    if "theme" in data and data.get("theme") in ("light", "dark"):
+        pref.theme = data.get("theme")
+    db.session.commit()
+    return jsonify({
+        "preferences": {
+            "notifications_enabled": pref.notifications_enabled,
+            "allow_data_sharing": pref.allow_data_sharing,
+            "theme": pref.theme,
+        }
+    }), 200

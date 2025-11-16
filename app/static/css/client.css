@@ -1,0 +1,39 @@
+:root {
+  --blue: #0d6efd;
+  --green: #198754;
+  --red: #dc3545;
+  --yellow: #fd7e14; /* naranja/amarillo */
+  --gray: #6c757d;
+}
+
+.client-sidebar { width: 260px; min-height: 100vh; position: sticky; top: 0; }
+.client-header {}
+.client-logo { width: 32px; height: 32px; object-fit: contain; }
+
+.avatar-circle { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+
+/* Cards con bordes de color */
+.border-blue { border: 2px solid var(--blue) !important; }
+.border-green { border: 2px solid var(--green) !important; }
+.border-red { border: 2px solid var(--red) !important; }
+.border-yellow { border: 2px solid var(--yellow) !important; }
+.border-gray { border: 2px solid var(--gray) !important; }
+
+/* Badges de estado */
+.badge-present { background-color: var(--green); color: #fff; }
+.badge-absent { background-color: var(--red); color: #fff; }
+.badge-warning { background-color: var(--yellow); color: #fff; }
+.bg-blue { background-color: var(--blue) !important; }
+.bg-green { background-color: var(--green) !important; }
+.bg-red { background-color: var(--red) !important; }
+.bg-yellow { background-color: var(--yellow) !important; }
+.bg-gray { background-color: var(--gray) !important; }
+
+/* Tipografía de información */
+.student-name { font-weight: 700; }
+.course-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+.time-range { font-variant-numeric: tabular-nums; }
+
+/* Reutilizables */
+.status-card .badge { font-weight: 600; }
+.status-card .progress-bar { font-weight: 600; }

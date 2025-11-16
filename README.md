@@ -44,8 +44,12 @@ Requisitos: Docker Desktop.
 ```
 docker compose up --build
 ```
-2) App disponible en `http://localhost:5000/` y salud en `http://localhost:5000/health`.
+2) App disponible en `http://localhost:${PORT:-5000}/` y salud en `http://localhost:${PORT:-5000}/health`.
 3) En el primer arranque, las migraciones se ejecutan automáticamente dentro del contenedor (`flask db upgrade`).
+
+Nota de puerto:
+- Puedes cambiar el puerto estableciendo la variable de entorno `PORT` antes de ejecutar Compose. Ejemplo: `set PORT=8000` en PowerShell o `export PORT=8000` en bash.
+- Compose mapea `${PORT}:${PORT}` y el contenedor sirve con `gunicorn` en `0.0.0.0:${PORT}`.
 
 Compose establece `DATABASE_URL` en `mysql+pymysql://root:root@db:3306/proyecto_final` y expone MySQL en `localhost:3306`.
 
@@ -79,11 +83,12 @@ python update_db.py
 ```
 python run.py
 ```
-La app escucha en `http://localhost:5000/`.
+La app escucha en `http://localhost:${PORT:-5000}/`. Puedes cambiar el puerto con `PORT` (ej.: `set PORT=8000` / `export PORT=8000`).
 
 ## Factory y Salud
 - Factory: `app.create_app()` configura extensiones y registra blueprints.
 - Salud: `GET /health` devuelve `{ "status": "ok" }`.
+- Ruta raíz `/` redirige a `/login`.
 
 ## Autenticación
 - Vista: `GET /login` sirve la página de login.

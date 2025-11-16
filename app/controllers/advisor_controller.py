@@ -13,6 +13,12 @@ def advisor_dashboard_view():
     """Vista del dashboard del asesor de becas"""
     return render_template("advisor/dashboard.html")
 
+@advisor_bp.get("/attendance/live")
+def advisor_attendance_live_view():
+    """Vista de asistencia en vivo (tabla de estudiantes y acciones)"""
+    # Página de demostración UI; los datos se conectarán más adelante
+    return render_template("advisor/attendance_live.html")
+
 # ==================== API ENDPOINTS ====================
 
 @advisor_bp.get("/api/students")

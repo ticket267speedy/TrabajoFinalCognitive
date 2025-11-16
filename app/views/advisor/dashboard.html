@@ -4,63 +4,534 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dashboard Asesor</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7Rxnatz/En6bFfKfD1uGmYl5/5hb5QJ0R8E5QvFMf4i" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f6f8fa; margin: 0; }
-      header { background: #24292f; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
-      header h1 { font-size: 18px; margin: 0; }
-      main { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-      .card { background: #fff; border: 1px solid #d0d7de; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
-      .card header { background: #fff; color: #24292f; padding: 12px 16px; border-bottom: 1px solid #d0d7de; }
-      .card header h2 { font-size: 16px; margin: 0; }
-      .card .content { padding: 12px 16px; }
-      .list { list-style: none; margin: 0; padding: 0; }
-      .list li { border-bottom: 1px solid #eff2f5; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; }
-      .list li:last-child { border-bottom: none; }
+      body { background: #f6f8fa; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; }
       .pill { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; }
       .pill.green { background: #daf5dc; color: #1a7f37; }
       .pill.gray { background: #eaeef2; color: #57606a; }
-      button { padding: 6px 10px; border: 0; border-radius: 8px; background: #0969da; color: #fff; font-weight: 600; cursor: pointer; }
-      button.secondary { background: #6c757d; }
-      .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
-      input[type="search"] { width: 100%; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 14px; }
-      .msg { margin-top: 8px; font-size: 13px; }
-      .msg.error { color: #d1242f; }
-      .msg.success { color: #1a7f37; }
+
+      /* ===== Live Attendance UI Styles (as specified) ===== */
+      :root {
+        --cyan: #06b6d4;
+        --cyan-10: rgba(6,182,212,0.10);
+        --orange: #f59e0b;
+        --green: #10b981;
+        --red: #ef4444;
+        --gray-50: #fafafa;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --black: #111827;
+        --primary-blue: #007AFF;
+      }
+      .soft-card { background: #fff; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); padding: 28px; border-top: 5px solid var(--cyan); }
+      .muted { color: var(--gray-500); }
+      .toolbar { height: 60px; background: var(--gray-50); border-radius: 8px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; margin: 20px 0; }
+      .search-wrap { position: relative; width: 300px; }
+      .search-input { width: 100%; height: 40px; padding-left: 40px; border: 1px solid var(--gray-300); border-radius: 8px; }
+      .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--gray-500); }
+      .table-block { border-radius: 8px; overflow: hidden; border: 1px solid var(--gray-200); background: #fff; }
+      .table-header { background: var(--gray-200); height: 48px; display: grid; grid-template-columns: 50px 2fr 120px 180px 180px; align-items: center; padding: 0 16px; }
+      .table-header span { font-size: 14px; font-weight: 700; color: #2f2f2f; text-transform: uppercase; }
+      .table-row { display: grid; grid-template-columns: 50px 2fr 120px 180px 180px; align-items: center; padding: 12px 16px; border-bottom: 16px solid #f5f5f5; background: #fff; height: 75px; }
+      .table-row:nth-child(even) { background: var(--gray-50); }
+      .table-row:hover { background: var(--gray-100); }
+      .student-cell { display: flex; align-items: center; }
+      .avatar { width: 50px; height: 50px; border-radius: 999px; border: 2px solid var(--gray-300); overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: #fff; color: var(--gray-500); font-weight: 700; }
+      .student-name { margin-left: 12px; font-weight: 700; font-size: 15px; color: var(--black); }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; color: var(--gray-500); font-size: 14px; }
+      .status-stack { display: flex; flex-direction: column; gap: 2px; }
+      .status-chip { padding: 6px 10px; border-radius: 14px; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+      .chip-present { background: rgba(16,185,129,0.10); color: #065f46; }
+      .chip-absent { background: rgba(239,68,68,0.10); color: #7f1d1d; }
+      .chip-late { background: rgba(245,158,11,0.10); color: #7c2d12; }
+      .chip-pending { background: rgba(156,163,175,0.20); color: #374151; }
+      .timestamp { font-size: 12px; color: var(--gray-500); }
+      .btn-change { width: 90px; height: 32px; border: 1px solid var(--gray-300); border-radius: 6px; background: #fff; color: #2f2f2f; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+      .btn-note { width: 90px; height: 32px; border: 1px solid var(--gray-300); border-radius: 6px; background: #fff; color: #2f2f2f; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+      .pagination-wrap { display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; margin-top: 16px; }
+      .page-btn { width: 36px; height: 36px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--gray-300); background: #fff; color: #2f2f2f; font-weight: 700; cursor: pointer; }
+      .page-btn:hover { border-color: var(--cyan); }
+      .page-btn.active { background: var(--cyan); color: #fff; border-color: var(--cyan); }
+      .ellipsis { padding: 0 6px; color: var(--gray-500); }
+      .actions-final { margin-top: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; }
+      .btn-cyan { width: 200px; height: 48px; border-radius: 8px; background: var(--cyan); color: #fff; font-weight: 700; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .btn-outline-cyan { width: 160px; height: 48px; border-radius: 8px; border: 2px solid var(--cyan); background: #fff; color: var(--cyan); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .btn-outline-orange { width: 180px; height: 48px; border-radius: 8px; border: 2px solid var(--orange); background: #fff; color: var(--orange); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.40); z-index: 1000; display: none; }
+      .overlay.visible { display: block; }
+      .modal-card { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 520px; max-height: 90vh; overflow-y: auto; background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); padding: 32px; z-index: 1001; display: none; }
+      .modal-title { font-weight: 700; font-size: 20px; color: var(--black); margin-bottom: 8px; }
+      .modal-close { position: absolute; right: 16px; top: 16px; width: 32px; height: 32px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: none; color: #2f2f2f; }
+      .modal-close:hover { background: var(--gray-100); }
+      .student-info { background: var(--gray-100); padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+      .student-info .line { display: flex; align-items: center; gap: 6px; }
+      .label { font-weight: 700; font-size: 14px; color: var(--black); }
+      .status-options { display: flex; flex-direction: column; gap: 10px; }
+      .option { height: 48px; padding: 12px; border: 1px solid var(--gray-300); border-radius: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+      .option:hover { border-color: #333; background: var(--gray-50); }
+      .option.selected.present { background: rgba(16,185,129,0.05); border: 3px solid var(--green); }
+      .option.selected.absent { background: rgba(239,68,68,0.05); border: 3px solid var(--red); }
+      .option.selected.late { background: rgba(245,158,11,0.05); border: 3px solid var(--orange); }
+      .option.selected.justified { background: rgba(16,185,129,0.05); border: 3px solid #34d399; }
+      .radio-outer { width: 20px; height: 20px; border-radius: 999px; border: 2px solid var(--gray-400); display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; }
+      .radio-inner { width: 10px; height: 10px; border-radius: 999px; display: none; }
+      .option.selected.present .radio-outer { border-color: var(--green); }
+      .option.selected.present .radio-inner { display: block; background: var(--green); }
+      .option.selected.absent .radio-outer { border-color: var(--red); }
+      .option.selected.absent .radio-inner { display: block; background: var(--red); }
+      .option.selected.late .radio-outer { border-color: var(--orange); }
+      .option.selected.late .radio-inner { display: block; background: var(--orange); }
+      .option.selected.justified .radio-outer { border-color: #34d399; }
+      .option.selected.justified .radio-inner { display: block; background: #34d399; }
+      .option-text { font-size: 15px; font-weight: 600; color: var(--black); }
+      .notes-label { font-size: 14px; margin-top: 20px; margin-bottom: 8px; }
+      .notes-area { width: 100%; height: 90px; padding: 12px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; resize: vertical; }
+      .small-muted { font-size: 13px; color: var(--gray-500); margin-top: 16px; }
+      .check-item { display: flex; align-items: center; gap: 10px; margin-top: 10px; cursor: pointer; }
+      .check-square { width: 20px; height: 20px; border-radius: 4px; border: 2px solid var(--gray-400); display: inline-flex; align-items: center; justify-content: center; }
+      .check-square.checked { background: var(--cyan); border-color: var(--cyan); color: #fff; }
+      .check-label { font-size: 14px; color: #2f2f2f; }
+      .modal-footer { margin-top: 28px; display: flex; justify-content: flex-end; gap: 12px; }
+      .btn-cancel { height: 40px; border-radius: 8px; border: 1px solid var(--gray-300); background: #fff; color: #2f2f2f; padding: 0 14px; }
+      .btn-apply { height: 40px; border-radius: 8px; border: none; background: var(--cyan); color: #fff; padding: 0 14px; font-weight: 700; }
+      /* ===== Sidebar for section switching ===== */
+      .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 0; }
+      .sidebar { height: 100%; }
+      .sidebar-column { width: 260px; }
+      .content-column { width: 100%; padding-left: 16px; }
+      .sidebar-wrapper { background: #ffffff; border-right: 1px solid #e5e7eb; border-radius: 0; max-width: 260px; }
+      .brand { font-weight: 800; color: #111827; }
+      .brand .bi { color: var(--primary-blue); }
+      .role-label { color: #6b7280; font-size: 14px; }
+      .sidebar .nav { margin-top: 24px; }
+      .sidebar .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-radius: 10px; color: #1f2937; font-weight: 600; font-size: 15px; letter-spacing: 0.2px; transition: background-color .2s ease, color .2s ease; cursor: pointer; }
+      .sidebar .nav-link:hover { background: #f5f5f5; color: #111827; }
+      .sidebar .nav-link.active { background: var(--primary-blue); color: #fff; box-shadow: 0 12px 24px rgba(0,122,255,0.25); }
+      .sidebar .nav-link .bi { font-size: 18px; color: inherit; }
+      .sidebar .logout { color: #dc2626; font-weight: 700; }
+      .sidebar .logout .bi { color: #dc2626; }
+      .sidebar-divider { border: none; height: 1px; background: #E5E5E5; }
+      .section { display: none; }
+      .section.active { display: block; }
+
+      /* Responsive: stack on small screens */
+      @media (max-width: 576px) {
+        .layout { grid-template-columns: 1fr; }
+        .content-column { padding-left: 0; }
+      }
+
+      /* Modern headings style */
+      .section h1 { font-weight: 700; letter-spacing: 0.3px; }
+      .section .text-muted { color: #6b7280 !important; }
     </style>
   </head>
   <body>
-    <header>
-      <h1>Dashboard del Asesor</h1>
-      <nav>
-        <button id="logoutBtn" class="secondary">Cerrar sesión</button>
-      </nav>
-    </header>
-    <main>
-      <div class="grid">
-        <section class="card" aria-labelledby="becariosTitle">
-          <header><h2 id="becariosTitle">Becarios</h2></header>
-          <div class="content">
-            <div class="toolbar">
-              <input id="searchStudents" type="search" placeholder="Buscar por nombre o email" />
-              <button id="refreshStudents" class="secondary">Actualizar</button>
-            </div>
-            <ul id="studentsList" class="list" aria-live="polite"></ul>
-            <div id="studentsMsg" class="msg"></div>
-          </div>
-        </section>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-dark">
+      <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1">Dashboard del Asesor</span>
+        <button id="logoutBtnTop" class="btn btn-outline-light btn-sm">Cerrar sesión</button>
+      </div>
+    </nav>
 
-        <section class="card" aria-labelledby="alertsTitle">
-          <header><h2 id="alertsTitle">Alertas</h2></header>
-          <div class="content">
-            <div class="toolbar">
-              <button id="refreshAlerts" class="secondary">Actualizar</button>
+    <main class="container-fluid my-4">
+      <div class="layout">
+        <!-- Left Sidebar -->
+        <aside class="sidebar-column border-end">
+          <div class="sidebar-wrapper sidebar sticky-top py-3 px-2">
+            <div class="d-flex align-items-center gap-2 ps-2 mb-1">
+              <i class="bi bi-mortarboard fs-4"></i>
+              <span class="brand">Universidad</span>
             </div>
-            <ul id="alertsList" class="list" aria-live="polite"></ul>
-            <div id="alertsMsg" class="msg"></div>
+            <div class="role-label mb-2" style="padding-left:8px;">Profesor</div>
+            <div class="d-flex flex-column h-100">
+              <nav class="nav flex-column gap-2 flex-grow-1">
+                <a href="#" class="nav-link active" data-section="home"><i class="bi bi-house-door"></i> Inicio</a>
+                <a href="#" class="nav-link" data-section="profile"><i class="bi bi-person"></i> Mi Perfil</a>
+                <a href="#" class="nav-link" data-section="courses"><i class="bi bi-book"></i> Mis Cursos</a>
+                <a href="#" class="nav-link" data-section="attendance"><i class="bi bi-check2-square"></i> Asistencia</a>
+                <a href="#" class="nav-link" data-section="settings"><i class="bi bi-gear"></i> Configuración</a>
+              </nav>
+              <hr class="sidebar-divider mt-4 mb-3" />
+              <a href="#" class="nav-link logout" id="logoutLink"><i class="bi bi-box-arrow-right"></i> Cerrar Sesión</a>
+            </div>
           </div>
-        </section>
+        </aside>
 
+        <!-- Right Content -->
+        <div class="content-column">
+          <!-- Home Section -->
+          <section id="section-home" class="section active">
+            <div class="mb-3"><h1 class="h4">Inicio</h1><p class="text-muted">Resumen general del profesor</p></div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6 col-lg-3">
+                <div class="card shadow-sm">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center gap-2"><i class="bi bi-people"></i><span class="fw-bold">Estudiantes</span></div>
+                    <div class="display-6">120</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-lg-3">
+                <div class="card shadow-sm">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center gap-2"><i class="bi bi-book"></i><span class="fw-bold">Cursos</span></div>
+                    <div class="display-6">6</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-lg-3">
+                <div class="card shadow-sm">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center gap-2"><i class="bi bi-check2-circle"></i><span class="fw-bold">Asistencia</span></div>
+                    <div class="display-6">93%</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-lg-3">
+                <div class="card shadow-sm">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center gap-2"><i class="bi bi-bell"></i><span class="fw-bold">Alertas</span></div>
+                    <div class="display-6">3</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- My Courses Section -->
+          <section id="section-courses" class="section">
+            <div class="mb-3"><h1 class="h4">Mis Cursos</h1><p class="text-muted">Lista de cursos asignados</p></div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center gap-2"><i class="bi bi-book"></i><strong>Calculus I</strong></div>
+                    <div class="text-muted">MAT301</div>
+                    <div class="mt-2 small">Lunes y Miércoles • 08:00 - 10:00</div>
+                    <div class="mt-2 small">Aula B-12</div>
+                    <div class="mt-3 d-flex gap-2">
+                      <button class="btn btn-primary btn-sm">Abrir sesión</button>
+                      <button class="btn btn-outline-secondary btn-sm">Ver alumnos</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center gap-2"><i class="bi bi-book"></i><strong>Physics I</strong></div>
+                    <div class="text-muted">PHY210</div>
+                    <div class="mt-2 small">Martes • 10:00 - 12:00</div>
+                    <div class="mt-2 small">Auditorio A</div>
+                    <div class="mt-3 d-flex gap-2">
+                      <button class="btn btn-primary btn-sm">Abrir sesión</button>
+                      <button class="btn btn-outline-secondary btn-sm">Ver alumnos</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- more course cards as needed -->
+            </div>
+          </section>
+
+          <!-- Attendance Section (Live Attendance) -->
+          <section id="section-attendance" class="section">
+            <!-- ===== Live Attendance Section integrated into /dashboard ===== -->
+            <!-- Breadcrumb -->
+            <div class="mb-3">
+              <a href="#" class="text-secondary" style="font-size:14px;"><span class="me-1">←</span> Back to My Courses</a>
+            </div>
+
+            <!-- Session Information Card -->
+            <div class="soft-card">
+              <div class="row g-4">
+                <div class="col-12 col-lg-6">
+                  <div class="d-flex flex-column" style="gap:10px;">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-book"></i>
+                      <span class="fw-bold" style="font-size:22px;">Calculus I</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 muted">
+                      <i class="bi bi-calendar3"></i>
+                      <span style="font-size:16px;">Monday, November 10, 2025</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 muted">
+                      <i class="bi bi-clock"></i>
+                      <span style="font-size:16px;">08:00 - 10:00</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 muted">
+                      <i class="bi bi-geo-alt"></i>
+                      <span style="font-size:16px;">Classroom B-12</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-lg-6">
+                  <div class="d-grid" style="grid-template-columns: repeat(2, 110px); gap: 12px;">
+                    <div class="d-flex flex-column align-items-center justify-content-center" style="width:110px;height:90px;background:rgba(59,130,246,0.10);border-radius:8px;">
+                      <div class="fw-bold" style="font-size:20px;">45</div>
+                      <div class="text-muted" style="font-size:12px;">Total</div>
+                    </div>
+                    <div class="d-flex flex-column align-items-center justify-content-center" style="width:110px;height:90px;background:rgba(16,185,129,0.10);border-radius:8px;color:#065f46;">
+                      <div><i class="bi bi-check2-circle"></i></div>
+                      <div class="fw-bold" style="font-size:20px;">42</div>
+                      <div class="text-muted" style="font-size:12px;">Present</div>
+                    </div>
+                    <div class="d-flex flex-column align-items-center justify-content-center" style="width:110px;height:90px;background:rgba(239,68,68,0.10);border-radius:8px;color:#7f1d1d;">
+                      <div><i class="bi bi-x-circle"></i></div>
+                      <div class="fw-bold" style="font-size:20px;">2</div>
+                      <div class="text-muted" style="font-size:12px;">Absent</div>
+                    </div>
+                    <div class="d-flex flex-column align-items-center justify-content-center" style="width:110px;height:90px;background:rgba(245,158,11,0.10);border-radius:8px;color:#7c2d12;">
+                      <div><i class="bi bi-clock"></i></div>
+                      <div class="fw-bold" style="font-size:20px;">1</div>
+                      <div class="text-muted" style="font-size:12px;">Late</div>
+                    </div>
+                  </div>
+                  <div class="mt-3 position-relative" style="width:100%;background:#e5e7eb;height:12px;border-radius:999px;overflow:hidden;">
+                    <div id="progressFill" style="height:100%;width:0%;background:linear-gradient(90deg,#22d3ee,#06b6d4);"></div>
+                    <div class="position-absolute" style="right:8px;top:50%;transform:translateY(-50%);color:#fff;font-weight:700;">93%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="toolbar">
+              <div class="search-wrap">
+                <i class="bi bi-search search-icon"></i>
+                <input class="search-input" type="text" placeholder="Search student..." id="searchInput">
+              </div>
+              <div class="d-flex align-items-center" style="gap:8px;">
+                <span class="me-2">Mark all as:</span>
+                <button class="btn btn-success" style="width:100px;border-radius:6px;height:36px;">Present</button>
+                <button class="btn btn-danger" style="width:100px;border-radius:6px;height:36px;">Absent</button>
+                <button class="btn btn-warning" style="width:100px;border-radius:6px;height:36px;">Late</button>
+              </div>
+            </div>
+
+            <!-- Table Header -->
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="fw-bold">List of Students (45)</div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="text-muted">Filter:</span>
+                <select class="form-select form-select-sm" style="width:160px;">
+                  <option>All</option>
+                  <option>Present</option>
+                  <option>Absent</option>
+                  <option>Late</option>
+                  <option>Pending</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Student Table -->
+            <div class="table-block" id="studentsTable">
+              <div class="table-header">
+                <span>#</span>
+                <span>Student</span>
+                <span>ID</span>
+                <span>Status</span>
+                <span>Actions</span>
+              </div>
+              <!-- Example rows -->
+              <div class="table-row">
+                <div>1</div>
+                <div class="student-cell">
+                  <div class="avatar"><img src="https://via.placeholder.com/50" alt="" width="50" height="50"></div>
+                  <div class="student-name">Juan Pérez</div>
+                </div>
+                <div class="mono">EST001</div>
+                <div class="status-stack">
+                  <span class="status-chip chip-present"><i class="bi bi-check2-circle"></i> Present</span>
+                  <span class="timestamp">08:05 AM</span>
+                </div>
+                <div class="d-flex align-items-center" style="gap:8px;">
+                  <button class="btn-change" data-student="Juan Pérez" data-id="EST001"><span>Change</span><i class="bi bi-chevron-down"></i></button>
+                  <button class="btn-note"><i class="bi bi-pencil"></i> Note</button>
+                </div>
+              </div>
+
+              <div class="table-row">
+                <div>2</div>
+                <div class="student-cell">
+                  <div class="avatar">ML</div>
+                  <div class="student-name">María López</div>
+                </div>
+                <div class="mono">EST002</div>
+                <div class="status-stack">
+                  <span class="status-chip chip-absent"><i class="bi bi-x-circle"></i> Absent</span>
+                  <span class="timestamp">08:12 AM</span>
+                </div>
+                <div class="d-flex align-items-center" style="gap:8px;">
+                  <button class="btn-change" data-student="María López" data-id="EST002"><span>Change</span><i class="bi bi-chevron-down"></i></button>
+                  <button class="btn-note"><i class="bi bi-pencil"></i> Note</button>
+                </div>
+              </div>
+
+              <div class="table-row">
+                <div>3</div>
+                <div class="student-cell">
+                  <div class="avatar">CD</div>
+                  <div class="student-name">Carlos Díaz</div>
+                </div>
+                <div class="mono">EST003</div>
+                <div class="status-stack">
+                  <span class="status-chip chip-late"><i class="bi bi-clock"></i> Late</span>
+                  <span class="timestamp">08:18 AM</span>
+                </div>
+                <div class="d-flex align-items-center" style="gap:8px;">
+                  <button class="btn-change" data-student="Carlos Díaz" data-id="EST003"><span>Change</span><i class="bi bi-chevron-down"></i></button>
+                  <button class="btn-note"><i class="bi bi-pencil"></i> Note</button>
+                </div>
+              </div>
+
+              <div class="table-row">
+                <div>4</div>
+                <div class="student-cell">
+                  <div class="avatar">JP</div>
+                  <div class="student-name">Julia Paredes</div>
+                </div>
+                <div class="mono">EST004</div>
+                <div class="status-stack">
+                  <span class="status-chip chip-pending"><i class="bi bi-hourglass"></i> Pending</span>
+                </div>
+                <div class="d-flex align-items-center" style="gap:8px;">
+                  <button class="btn-change" data-student="Julia Paredes" data-id="EST004"><span>Change</span><i class="bi bi-chevron-down"></i></button>
+                  <button class="btn-note"><i class="bi bi-pencil"></i> Note</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination-wrap">
+              <button class="page-btn">1</button>
+              <button class="page-btn active">2</button>
+              <button class="page-btn">3</button>
+              <span class="ellipsis">...</span>
+              <button class="page-btn">8</button>
+              <button class="page-btn">9</button>
+            </div>
+
+            <!-- Final Action Buttons -->
+            <div class="actions-final">
+              <button class="btn-cyan"><i class="bi bi-save2"></i> Save Attendance</button>
+              <button class="btn-outline-cyan"><i class="bi bi-graph-up"></i> View Report</button>
+              <button class="btn-outline-orange"><i class="bi bi-envelope"></i> Notify Absences</button>
+            </div>
+
+            <!-- Status Change Modal -->
+            <div class="overlay" id="statusOverlay"></div>
+            <div class="modal-card" id="statusModal">
+              <button class="modal-close" id="modalClose"><i class="bi bi-x-lg"></i></button>
+              <div class="modal-title">Change Attendance Status</div>
+              <div class="student-info">
+                <div class="line"><span class="label">Student:</span> <span id="mStudent">Juan Pérez (EST001)</span></div>
+                <div class="line muted"><i class="bi bi-book"></i> <span id="mCourse">Calculus 1 - MAT301</span></div>
+                <div class="line muted"><i class="bi bi-calendar3"></i> <span id="mDate">Monday, November 10, 2025</span></div>
+              </div>
+              <div class="label">Select new status:</div>
+              <div class="status-options mt-2">
+                <div class="option present" data-value="present">
+                  <div class="radio-outer"><div class="radio-inner"></div></div>
+                  <i class="bi bi-check2-circle" style="color:#10b981"></i>
+                  <div class="option-text">Present</div>
+                </div>
+                <div class="option absent" data-value="absent">
+                  <div class="radio-outer"><div class="radio-inner"></div></div>
+                  <i class="bi bi-x-circle" style="color:#ef4444"></i>
+                  <div class="option-text">Absent</div>
+                </div>
+                <div class="option late" data-value="late">
+                  <div class="radio-outer"><div class="radio-inner"></div></div>
+                  <i class="bi bi-clock" style="color:#f59e0b"></i>
+                  <div class="option-text">Late</div>
+                </div>
+                <div class="option justified" data-value="justified">
+                  <div class="radio-outer"><div class="radio-inner"></div></div>
+                  <i class="bi bi-check2" style="color:#34d399"></i>
+                  <div class="option-text">Justified</div>
+                </div>
+              </div>
+              <div class="notes-label">Additional Notes (optional):</div>
+              <textarea class="notes-area" placeholder="Add comment..." id="mNotes"></textarea>
+              <div class="small-muted">If the absence is justified:</div>
+              <div class="check-item" data-check="notifyAdvisor">
+                <div class="check-square" id="checkNotify"><i class="bi bi-check-lg" style="display:none;"></i></div>
+                <div class="check-label">Send notification to the scholarship advisor</div>
+              </div>
+              <div class="check-item" data-check="noCount">
+                <div class="check-square" id="checkNoCount"><i class="bi bi-check-lg" style="display:none;"></i></div>
+                <div class="check-label">Do not count towards absence statistics</div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn-cancel" id="btnCancel">Cancel</button>
+                <button class="btn-apply" id="btnApply">Apply</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Settings Section -->
+          <section id="section-settings" class="section">
+            <div class="mb-3"><h1 class="h4">Configuración</h1><p class="text-muted">Preferencias del sistema</p></div>
+            <div class="row g-3">
+              <div class="col-12 col-lg-6">
+                <div class="card shadow-sm">
+                  <div class="card-header"><strong>Notificaciones</strong></div>
+                  <div class="card-body">
+                    <div class="form-check form-switch mb-2">
+                      <input class="form-check-input" type="checkbox" id="notifEmail" checked>
+                      <label class="form-check-label" for="notifEmail">Email</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                      <input class="form-check-input" type="checkbox" id="notifSMS">
+                      <label class="form-check-label" for="notifSMS">SMS</label>
+                    </div>
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="notifPush" checked>
+                      <label class="form-check-label" for="notifPush">Push</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-lg-6">
+                <div class="card shadow-sm">
+                  <div class="card-header"><strong>Apariencia</strong></div>
+                  <div class="card-body">
+                    <select class="form-select mb-2">
+                      <option>Claro</option>
+                      <option>Oscuro</option>
+                      <option>Sistema</option>
+                    </select>
+                    <button class="btn btn-outline-secondary btn-sm">Guardar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Profile Section -->
+          <section id="section-profile" class="section">
+            <div class="mb-3"><h1 class="h4">Mi Perfil</h1><p class="text-muted">Información personal</p></div>
+            <div class="card shadow-sm">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="avatar" style="width:64px;height:64px;">PR</div>
+                <div>
+                  <div class="fw-bold">Profesor Demo</div>
+                  <div class="text-muted">profesor@universidad.edu</div>
+                  <div class="small">Departamento de Matemáticas</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
 
@@ -72,149 +543,132 @@
         return h;
       }
 
-      // Render helpers
-      function renderStudents(items) {
-        const list = document.getElementById('studentsList');
-        list.innerHTML = '';
-        if (!items || items.length === 0) {
-          list.innerHTML = '<li>No hay becarios para mostrar.</li>';
-          return;
-        }
-        for (const s of items) {
-          const li = document.createElement('li');
-          const name = `${s.first_name || ''} ${s.last_name || ''}`.trim();
-          li.innerHTML = `
-            <span>
-              <strong>${name || '(Sin nombre)'}</strong>
-              <span class="pill green" style="margin-left:8px;">Becario</span>
-              <div style="font-size:12px;color:#57606a;">${s.email || ''}</div>
-            </span>
-            <span>
-              <button class="secondary" onclick="viewStudent(${s.id})">Ver</button>
-            </span>
-          `;
-          list.appendChild(li);
-        }
-      }
-
-      function renderAlerts(items) {
-        const list = document.getElementById('alertsList');
-        list.innerHTML = '';
-        if (!items || items.length === 0) {
-          list.innerHTML = '<li>No hay alertas.</li>';
-          return;
-        }
-        for (const a of items) {
-          const li = document.createElement('li');
-          const name = `${a.student_first_name || ''} ${a.student_last_name || ''}`.trim();
-          const status = a.is_read ? '<span class="pill gray">Leída</span>' : '<span class="pill green">Nueva</span>';
-          li.innerHTML = `
-            <span>
-              <strong>${name || '(Becario)'}</strong>
-              <div style="font-size:12px;color:#57606a;">${a.message || 'Alerta'}</div>
-            </span>
-            <span>
-              ${status}
-              ${a.is_read ? '' : `<button onclick="markAlertRead(${a.id})" style="margin-left:8px;">Marcar leído</button>`}
-            </span>
-          `;
-          list.appendChild(li);
-        }
-      }
-
-      // API calls
-      async function fetchStudents() {
-        const msg = document.getElementById('studentsMsg');
-        msg.textContent = '';
-        try {
-          const res = await fetch('/api/asesores/students?scholarship=true', { headers: authHeaders() });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error || 'Error al cargar becarios');
-          renderStudents(data.items || data.students || []);
-        } catch (err) {
-          msg.textContent = err.message || 'Error al cargar becarios';
-          msg.className = 'msg error';
-        }
-      }
-
-      // Filtra solo alertas de asistencia (faltas o poco tiempo en clase)
-      function isAttendanceAlert(message) {
-        const msg = (message || '').toLowerCase();
-        const includeKeywords = [
-          'falta', // faltas
-          'asistencia',
-          'entrada',
-          'salida',
-          'tardanza',
-          'minutos',
-          'horas',
-          'tiempo',
-        ];
-        const excludeKeywords = [
-          'rendimiento', // bajo rendimiento en evaluaciones
-          'evaluacion', 'evaluaciones',
-          'laboratorio',
-          'apoyo',
-        ];
-        if (excludeKeywords.some(k => msg.includes(k))) return false;
-        return includeKeywords.some(k => msg.includes(k));
-      }
-
-      async function fetchAlerts() {
-        const msg = document.getElementById('alertsMsg');
-        msg.textContent = '';
-        try {
-          const res = await fetch('/api/alerts?scholarship=true', { headers: authHeaders() });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error || 'Error al cargar alertas');
-          const items = data.items || data.alerts || [];
-          const filtered = items.filter(a => isAttendanceAlert(a.message));
-          renderAlerts(filtered);
-        } catch (err) {
-          msg.textContent = err.message || 'Error al cargar alertas';
-          msg.className = 'msg error';
-        }
-      }
-
-      async function markAlertRead(id) {
-        try {
-          const res = await fetch(`/api/alerts/${id}/read`, { method: 'PATCH', headers: authHeaders() });
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || 'No se pudo marcar como leído');
-          }
-          await fetchAlerts();
-        } catch (err) {
-          const msg = document.getElementById('alertsMsg');
-          msg.textContent = err.message;
-          msg.className = 'msg error';
-        }
-      }
-
-      window.viewStudent = function(id) {
-        alert('Detalle de becario ' + id + ' (pendiente de implementar)');
+      // Section switching
+      const sectionMap = {
+        home: 'section-home',
+        courses: 'section-courses',
+        attendance: 'section-attendance',
+        settings: 'section-settings',
+        profile: 'section-profile',
       };
+      function showSection(key) {
+        // Hide all sections
+        Object.values(sectionMap).forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.classList.remove('active');
+        });
+        // Resolve target section (fallback to home if missing)
+        const id = sectionMap[key] || sectionMap.home;
+        const target = document.getElementById(id);
+        if (target) target.classList.add('active');
+        // Update nav active state (fallback to home if missing)
+        document.querySelectorAll('.sidebar .nav-link').forEach(a => a.classList.remove('active'));
+        const link = document.querySelector(`.sidebar .nav-link[data-section="${key}"]`) || document.querySelector(`.sidebar .nav-link[data-section="home"]`);
+        if (link) link.classList.add('active');
+      }
+      // Click handlers for section links
+      document.querySelectorAll('.sidebar .nav-link[data-section]').forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const key = a.dataset.section;
+          showSection(key);
+        });
+      });
+      // Default to Home
+      showSection('home');
 
-      document.getElementById('refreshStudents').addEventListener('click', fetchStudents);
-      document.getElementById('refreshAlerts').addEventListener('click', fetchAlerts);
-      document.getElementById('searchStudents').addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        const items = Array.from(document.querySelectorAll('#studentsList li'));
-        for (const li of items) {
-          li.style.display = li.textContent.toLowerCase().includes(term) ? '' : 'none';
+      // Ensure logout navigates to /login (navbar and sidebar)
+      ['logoutBtnTop','logoutLink'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('click', (e) => {
+            e.preventDefault();
+            try { localStorage.removeItem('access_token'); } catch (_) {}
+            window.location.href = '/login';
+          });
         }
       });
 
-      // Initial load
-      fetchStudents();
-      fetchAlerts();
-
-
-      // Logout
-      document.getElementById('logoutBtn').addEventListener('click', () => {
-        localStorage.removeItem('access_token');
-        window.location.href = '/login';
+      // Progress animation (demo)
+      document.addEventListener('DOMContentLoaded', () => {
+        const pf = document.getElementById('progressFill');
+        if (pf) setTimeout(() => pf.style.width = '93%', 300);
       });
+
+      // Search filter for table
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const term = e.target.value.toLowerCase();
+          document.querySelectorAll('#studentsTable .table-row').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(term) ? '' : 'none';
+          });
+        });
+      }
+
+      // Modal interactions
+      const overlay = document.getElementById('statusOverlay');
+      const modal = document.getElementById('statusModal');
+      const closeBtn = document.getElementById('modalClose');
+      const btnCancel = document.getElementById('btnCancel');
+      const btnApply = document.getElementById('btnApply');
+      const mStudent = document.getElementById('mStudent');
+      const notes = document.getElementById('mNotes');
+
+      function openModal(studentName, studentId) {
+        mStudent.textContent = `${studentName} (${studentId})`;
+        overlay.classList.add('visible');
+        modal.style.display = 'block';
+      }
+
+      function closeModal() {
+        overlay.classList.remove('visible');
+        modal.style.display = 'none';
+        document.querySelectorAll('.status-options .option').forEach(o => o.classList.remove('selected'));
+        document.querySelectorAll('.check-square').forEach(c => { c.classList.remove('checked'); c.querySelector('i').style.display = 'none'; });
+        notes.value = '';
+      }
+
+      document.querySelectorAll('.btn-change').forEach(btn => {
+        btn.addEventListener('click', () => openModal(btn.dataset.student, btn.dataset.id));
+      });
+      if (overlay) overlay.addEventListener('click', closeModal);
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
+      if (btnCancel) btnCancel.addEventListener('click', closeModal);
+
+      // Select status option
+      document.querySelectorAll('.status-options .option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          document.querySelectorAll('.status-options .option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+        });
+      });
+
+      // Custom checkboxes
+      document.querySelectorAll('.check-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const box = item.querySelector('.check-square');
+          const icon = box.querySelector('i');
+          const checked = box.classList.toggle('checked');
+          icon.style.display = checked ? 'block' : 'none';
+        });
+      });
+
+      // Apply changes (demo only)
+      if (btnApply) {
+        btnApply.addEventListener('click', () => {
+          const selected = document.querySelector('.status-options .option.selected');
+          const status = selected ? selected.dataset.value : null;
+          console.log('Apply status:', status, 'Notes:', notes.value);
+          closeModal();
+        });
+      }
+
+
+      // (Removed) Duplicate logout handler — handled earlier for both navbar and sidebar
     </script>
+    <!-- Bootstrap JS (optional) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0j+PmSTsz/K68vbd" crossorigin="anonymous"></script>
   </body>
   </html>

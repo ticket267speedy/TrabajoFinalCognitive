@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Sección Cliente{% endblock %}</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+    <!-- Cliente design tokens -->
+    <link href="{{ url_for('static', filename='css/client.css') }}" rel="stylesheet" />
+  </head>
+  <body class="bg-light">
+    <div class="d-flex">
+      <!-- Sidebar izquierdo fijo -->
+      <nav class="client-sidebar bg-white border-end">
+        <div class="p-3 d-flex align-items-center gap-2 border-bottom">
+          <i class="bi bi-mortarboard-fill text-primary fs-4"></i>
+          <span class="fw-bold">Universidad</span>
+        </div>
+        <ul class="nav flex-column p-2">
+          <li class="nav-item"><a class="nav-link" href="/client/"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="/client/profile"><i class="bi bi-person-circle me-2"></i>Mi Perfil</a></li>
+          <li class="nav-item"><a class="nav-link" href="/client/reports"><i class="bi bi-bar-chart-line me-2"></i>Reportes</a></li>
+          <li class="nav-item"><a class="nav-link" href="/client/settings"><i class="bi bi-gear me-2"></i>Configuración</a></li>
+          <li class="nav-item mt-2"><a class="nav-link" href="/client/policy"><i class="bi bi-shield-lock me-2"></i>Política Universitaria</a></li>
+        </ul>
+      </nav>
+
+      <div class="flex-grow-1">
+        <!-- Header superior -->
+        <header class="client-header bg-white border-bottom px-3 py-2 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-3">
+            <img src="{{ url_for('static', filename='uploads/logo.png') }}" alt="Logo" class="client-logo d-none d-sm-block" />
+            <h1 class="h5 m-0">{% block header_title %}Portal del Cliente{% endblock %}</h1>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <button id="notifBtn" class="btn btn-outline-primary btn-sm"><i class="bi bi-bell"></i></button>
+            <div id="userMini" class="d-flex align-items-center gap-2">
+              <div class="avatar-circle bg-primary text-white">CC</div>
+              <div class="small text-muted">
+                <span id="userName">Cliente</span>
+                <div id="userRole">client</div>
+              </div>
+            </div>
+            <!-- Login form path: /login -->
+            <button id="backToLoginBtn" class="btn btn-outline-secondary btn-sm" title="Volver al formulario de ingreso">
+              <i class="bi bi-box-arrow-right"></i>
+              <span class="d-none d-sm-inline">Ingreso</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Contenido -->
+        <main class="p-3">
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Cargar datos básicos del usuario para el header
+      async function loadClientHeader() {
+        try {
+          const token = localStorage.getItem('access_token');
+          const res = await fetch('/api/client/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+          const data = await res.json();
+          if (res.ok && data) {
+            const name = [data.first_name || '', data.last_name || ''].filter(Boolean).join(' ').trim();
+            document.getElementById('userName').textContent = name || data.email;
+            document.getElementById('userRole').textContent = data.role || 'client';
+            const initials = (name || data.email || 'C').split(/\s|@/).filter(Boolean).slice(0,2).map(x=>x[0].toUpperCase()).join('');
+            const avatar = document.querySelector('.avatar-circle');
+            if (avatar) avatar.textContent = initials || 'C';
+          }
+        } catch (e) {
+          console.warn('Header client info load failed:', e);
+        }
+      }
+      loadClientHeader();
+      // Volver al login (limpia token si existe y navega a /login)
+      const backBtn = document.getElementById('backToLoginBtn');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          try { localStorage.removeItem('access_token'); } catch (_) {}
+          window.location.href = '/login';
+        });
+      }
+    </script>
+  </body>
+  </html>

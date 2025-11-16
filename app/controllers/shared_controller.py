@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, redirect
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
 from werkzeug.security import check_password_hash
 from ..extensions import db
@@ -7,6 +7,11 @@ from ..models import User, Course, Student, Enrollment
 shared_bp = Blueprint("shared", __name__)
 
 # ==================== VISTAS COMPARTIDAS ====================
+
+@shared_bp.get("/")
+def root_view():
+    """Redirige la ruta raíz al login para evitar 404."""
+    return redirect("/login")
 
 @shared_bp.get("/login")
 def login_view():
@@ -30,49 +35,10 @@ def course_people_view(course_id: int):
 
 # ==================== API ENDPOINTS COMPARTIDOS ====================
 
-@shared_bp.post("/api/login")
-def login():
-    """Endpoint de login para todos los roles"""
-    try:
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-        
-        if not email or not password:
-            return jsonify({"error": "Email y contraseña son requeridos"}), 400
-        
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            return jsonify({"error": "Credenciales inválidas"}), 401
-
-      
-        # Validar contraseña: soporta hash (nuevo) y texto plano (semilla antigua)
-        valid = False
-        try:
-            valid = check_password_hash(user.password_text, password)
-        except Exception:
-            valid = False
-        if not valid and user.password_text == password:
-            valid = True
-        if not valid:
-            return jsonify({"error": "Credenciales inválidas"}), 401
-        
-        # Emitir JWT con identity como string y claims de rol para compatibilidad
-        role_value = user.role if not hasattr(user.role, 'value') else user.role.value
-        access_token = create_access_token(identity=str(user.id), additional_claims={"role": role_value, "email": user.email})
-        
-        return jsonify({
-            "access_token": access_token,
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "role": role_value
-            }
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# Nota: el login de API se gestiona en el blueprint `api` con la ruta
+# `POST /api/login` (universal_login) usando `silent=True` al decodificar JSON
+# para evitar errores 400 por payload mal citado en PowerShell.
+# Aquí no se define un duplicado para prevenir conflictos de rutas.
 
 @shared_bp.get("/api/users/<int:user_id>/profile")
 @jwt_required()

@@ -17,9 +17,10 @@ COPY . /app
 
 # Environment for Flask CLI
 ENV FLASK_APP=run.py \
-    FLASK_ENV=production
+    FLASK_ENV=production \
+    PORT=5000
 
 EXPOSE 5000
 
 # Run DB migrations then start the app with gunicorn
-CMD ["sh", "-c", "flask db upgrade && gunicorn -w 3 -b 0.0.0.0:5000 run:app"]
+CMD ["sh", "-c", "flask db upgrade && gunicorn -w 3 -b 0.0.0.0:${PORT} run:app"]

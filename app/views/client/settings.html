@@ -1,0 +1,63 @@
+{% extends 'client/layout.html' %}
+{% block title %}Configuración{% endblock %}
+{% block header_title %}Configuración{% endblock %}
+{% block content %}
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-header"><strong>Privacidad y preferencias</strong></div>
+      <div class="card-body">
+        <form id="prefForm" class="row g-3">
+          <div class="col-12 col-md-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="notificationsEnabled">
+              <label class="form-check-label" for="notificationsEnabled">Notificaciones</label>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="dataSharing">
+              <label class="form-check-label" for="dataSharing">Compartir datos con asesores</label>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Tema</label>
+            <select id="themeSelect" class="form-select">
+              <option value="light">Claro</option>
+              <option value="dark">Oscuro</option>
+            </select>
+          </div>
+          <div class="col-12 text-end">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </div>
+        </form>
+        <div id="prefMsg" class="small mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('access_token');
+    const authHeaders = token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+    async function loadPrefs() {
+      const res = await fetch('/api/client/me', { headers: authHeaders });
+      const data = await res.json();
+      if (res.ok && data.preferences) {
+        document.getElementById('notificationsEnabled').checked = !!data.preferences.notifications_enabled;
+        document.getElementById('dataSharing').checked = !!data.preferences.allow_data_sharing;
+        document.getElementById('themeSelect').value = data.preferences.theme || 'light';
+      }
+    }
+    document.getElementById('prefForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        notifications_enabled: document.getElementById('notificationsEnabled').checked,
+        allow_data_sharing: document.getElementById('dataSharing').checked,
+        theme: document.getElementById('themeSelect').value
+      };
+      const res = await fetch('/api/client/preferences', { method: 'PATCH', headers: authHeaders, body: JSON.stringify(payload) });
+      const data = await res.json();
+      document.getElementById('prefMsg').textContent = res.ok ? 'Preferencias guardadas' : (data.error || 'Error');
+    });
+    loadPrefs();
+  </script>
+{% endblock %}

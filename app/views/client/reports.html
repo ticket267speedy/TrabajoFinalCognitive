@@ -1,0 +1,55 @@
+{% extends 'client/layout.html' %}
+{% block title %}Reportes{% endblock %}
+{% block header_title %}Reportes{% endblock %}
+{% block content %}
+  <div class="container-fluid">
+    <div class="card mb-3">
+      <div class="card-header"><strong>Filtros</strong></div>
+      <div class="card-body">
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-md-3">
+            <label class="form-label">Periodo</label>
+            <input type="month" class="form-control" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Curso</label>
+            <input type="text" class="form-control" placeholder="Circuitos…" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label">Estado</label>
+            <select class="form-select">
+              <option>Todos</option>
+              <option>Presente</option>
+              <option>Ausente</option>
+              <option>Observado</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-2 text-end">
+            <button class="btn btn-primary">Aplicar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-header"><strong>Comparativo por curso</strong></div>
+          <div class="card-body">
+            <div class="progress my-2" style="height: 24px"><div class="progress-bar bg-blue" style="width: 55%">Curso A 55%</div></div>
+            <div class="progress my-2" style="height: 24px"><div class="progress-bar bg-green" style="width: 78%">Curso B 78%</div></div>
+            <div class="progress my-2" style="height: 24px"><div class="progress-bar bg-red" style="width: 22%">Curso C 22%</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-header"><strong>Alertas por día</strong></div>
+          <div class="card-body">
+            <ul id="alertsByDay" class="list-group"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

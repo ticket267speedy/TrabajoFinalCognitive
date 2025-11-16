@@ -7,3 +7,10 @@ from .attendance_log import AttendanceLog
 from .attendance_summary import AttendanceSummary
 from .alert import Alert
 from .advisor_course_link import AdvisorCourseLink
+from .guardian_student_link import GuardianStudentLink
+from .client_preference import ClientPreference
+from .weekly_report import WeeklyReport
+from .attendance_alerts_config import AttendanceAlertsConfig
+from .course_schedule import CourseSchedule
+from .notification_preference import NotificationPreference
+from .system_setting import SystemSetting

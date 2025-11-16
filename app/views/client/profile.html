@@ -1,0 +1,80 @@
+{% extends 'client/layout.html' %}
+{% block title %}Mi Perfil{% endblock %}
+{% block header_title %}Mi Perfil{% endblock %}
+{% block content %}
+  <div class="container-fluid">
+    <div class="row g-3">
+      <div class="col-12 col-lg-4">
+        <div class="card">
+          <div class="card-header"><strong>Información personal</strong></div>
+          <div class="card-body">
+            <div class="d-flex align-items-center gap-3 mb-3">
+              <div class="avatar-circle bg-primary text-white">CC</div>
+              <div>
+                <div id="profileName" class="fw-bold">Carlos Cliente</div>
+                <div id="profileEmail" class="text-muted small">cliente@demo.com</div>
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <span class="badge bg-blue">Activo</span>
+              <span class="badge bg-green">Presente</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-8">
+        <div class="card">
+          <div class="card-header"><strong>Hijos vinculados</strong></div>
+          <div class="card-body">
+            <div id="childrenCards" class="row g-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('access_token');
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+    async function loadProfile() {
+      const res = await fetch('/api/client/me', { headers: authHeaders });
+      const data = await res.json();
+      if (res.ok) {
+        const name = [data.first_name || '', data.last_name || ''].filter(Boolean).join(' ').trim();
+        document.getElementById('profileName').textContent = name || data.email;
+        document.getElementById('profileEmail').textContent = data.email || '';
+      }
+    }
+    async function loadChildren() {
+      const res = await fetch('/api/client/children', { headers: authHeaders });
+      const data = await res.json();
+      const container = document.getElementById('childrenCards');
+      container.innerHTML = '';
+      if (!res.ok) return;
+      for (const s of (data.items || [])) {
+        const col = document.createElement('div');
+        col.className = 'col-12 col-md-6';
+        col.innerHTML = `
+          <div class="card h-100 border-blue">
+            <div class="card-body">
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <div class="avatar-circle bg-secondary text-white">${(s.first_name[0]||'')}${(s.last_name[0]||'')}</div>
+                <div>
+                  <div class="fw-bold">${s.first_name} ${s.last_name}</div>
+                  <div class="small text-muted">${s.email || ''}</div>
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                <span class="badge badge-progress">En curso</span>
+                ${s.is_scholarship_student ? '<span class="badge bg-blue">Becario</span>' : ''}
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(col);
+      }
+    }
+    loadProfile();
+    loadChildren();
+  </script>
+{% endblock %}

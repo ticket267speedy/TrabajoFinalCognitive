@@ -1,0 +1,15 @@
+### Health check
+GET http://localhost:5000/health
+
+### Login as admin to get JWT
+POST http://localhost:5000/api/login
+Content-Type: application/json
+
+{
+  "email": "admin@demo.com",
+  "password": "Password123"
+}
+
+### After getting the token, replace {{token}} below
+GET http://localhost:5000/api/admin/profile
+Authorization: Bearer {{token}}
