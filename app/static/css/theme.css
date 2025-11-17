@@ -1,0 +1,52 @@
+:root{
+  --navy:#0b1a2e;
+  --white:#ffffff;
+  --black:#000000;
+}
+
+html,body{background:var(--white);color:var(--black);}
+a{color:var(--navy);text-decoration:none}
+a:hover{color:var(--navy);opacity:.85;text-decoration:underline}
+
+.navbar{background:var(--navy)!important;color:var(--white)!important}
+.navbar .navbar-brand,.navbar .nav-link,.navbar .btn{color:var(--white)!important}
+.navbar .btn.btn-outline-secondary{border-color:var(--white);color:var(--white)}
+.navbar .btn.btn-outline-secondary:hover{background:var(--white);color:var(--navy)}
+
+.card{background:var(--white);color:var(--black);border:1px solid #d0d7de;box-shadow:0 6px 18px rgba(11,26,46,.08)}
+.card-header{background:var(--navy);color:var(--white)}
+
+.section{background:var(--white);color:var(--black);border:1px solid #d0d7de}
+
+.list-group-item{border-color:#d0d7de;color:var(--black)}
+
+.form-control,.form-select{border:1px solid #d0d7de;color:var(--black);background:var(--white)}
+.form-control:focus,.form-select:focus{border-color:var(--navy);box-shadow:0 0 0 .25rem rgba(11,26,46,.15)}
+
+.btn-primary{background:var(--navy);border-color:var(--navy);color:var(--white)}
+.btn-primary:hover{opacity:.9}
+.btn-secondary{background:var(--navy);border-color:var(--navy);color:var(--white)}
+.btn-outline-primary{color:var(--navy);border-color:var(--navy)}
+.btn-outline-primary:hover{background:var(--navy);color:var(--white)}
+.btn-outline-secondary{color:var(--navy);border-color:var(--navy)}
+.btn-outline-secondary:hover{background:var(--navy);color:var(--white)}
+
+.badge.bg-success{background:var(--navy)}
+.badge.bg-secondary{background:#6c757d;color:var(--white)}
+
+.modal-content{border:1px solid #d0d7de}
+
+header.header,.scroll-top{background:var(--navy);color:var(--white)}
+.subtitle{color:var(--navy)}
+
+/* Centrado armonioso */
+.main .section,.main .card{max-width:960px;margin-left:auto;margin-right:auto}
+.center-content .card{max-width:960px;margin-left:auto;margin-right:auto}
+.center-page{min-height:100vh;display:flex;align-items:center;justify-content:center}
+
+/* Login */
+.login-container{max-width:420px;margin:8vh auto;background:var(--white);padding:24px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.08);border:1px solid #d0d7de}
+.login-container h1{color:var(--black)}
+.login-container button{background:var(--navy);color:var(--white)}
+.login-container .msg.error{color:#d1242f}
+.login-container .msg.success{color:#1a7f37}

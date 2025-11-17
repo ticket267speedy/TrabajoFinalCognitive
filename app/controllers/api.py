@@ -1,4 +1,7 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, Response, stream_with_context
+import requests
+import cv2
+import time
 from werkzeug.security import generate_password_hash
 from werkzeug.security import check_password_hash
 from sqlalchemy import text
@@ -984,3 +987,53 @@ def universal_login():
             }), 200
 
     return jsonify({"error": "No autorizado"}), 401
+@api_bp.get("/video_stream")
+@api_bp.get("/admin/video_stream")
+def video_stream():
+    camera_url = (request.args.get("url") or os.getenv("CAMERA_URL") or "http://192.168.18.122:81/stream").strip()
+    if request.method == "HEAD":
+        resp = Response(status=200)
+        resp.headers["Content-Type"] = "multipart/x-mixed-replace; boundary=frame"
+        return resp
+    def gen():
+        cap = cv2.VideoCapture(camera_url)
+        try:
+            while True:
+                if not cap.isOpened():
+                    cap.release()
+                    cap = cv2.VideoCapture(camera_url)
+                    time.sleep(0.5)
+                    continue
+                ok, frame = cap.read()
+                if not ok:
+                    time.sleep(0.05)
+                    continue
+                ok2, buf = cv2.imencode('.jpg', frame)
+                if not ok2:
+                    continue
+                data = buf.tobytes()
+                yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + data + b"\r\n"
+        finally:
+            try:
+                cap.release()
+            except Exception:
+                pass
+    return Response(stream_with_context(gen()), content_type="multipart/x-mixed-replace; boundary=frame")
+
+@api_bp.get("/admin/camera/flash")
+@jwt_required()
+def admin_camera_flash():
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    target = (request.args.get("target") or "").strip()
+    if not target:
+        return jsonify({"error": "target requerido"}), 400
+    if not (target.lower().startswith("http://") or target.lower().startswith("https://")):
+        return jsonify({"error": "URL inválida"}), 400
+    try:
+        r = requests.get(target, timeout=3, allow_redirects=True)
+        if r.status_code >= 400:
+            return jsonify({"ok": False, "status": r.status_code}), 502
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 502
+    return jsonify({"ok": True}), 200

@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sesión Activa</title>
+    <link rel="stylesheet" href="/static/css/theme.css" />
     <style>
       :root { --bg:#f6f8fa; --card:#fff; --border:#d0d7de; --text:#24292f; --primary:#0969da; --danger:#d1242f; --success:#1a7f37; }
       * { box-sizing: border-box; }
@@ -21,11 +22,11 @@
       .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
       button { padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; }
       button.primary { background: var(--primary); color:#fff; border-color: var(--primary); }
-      video, canvas { width:100%; max-width: 480px; border-radius:10px; border:1px solid var(--border); }
+      video, canvas, img { width:100%; max-width: 480px; border-radius:10px; border:1px solid var(--border); }
       .muted { color:#57606a; font-size:12px; }
       .course-title { font-weight:600; font-size:16px; color: var(--text); }
       /* Estilo de títulos de sección como recuadro negro, ancho completo */
-      .card header h2 { margin:0 0 10px; font-size:16px; border:2px solid #000; padding:6px 10px; border-radius:6px; background:#f0f2f5; display:block; width:100%; }
+      .card header h2 { margin:0 0 10px; font-size:16px; display:block; width:100%; }
     </style>
   </head>
   <body data-course-id="{{ course_id }}">
@@ -35,7 +36,7 @@
         <a href="/admin" style="text-decoration:none"><button>Volver al panel</button></a>
       </nav>
     </header>
-    <main>
+    <main class="main">
       <section class="card">
         <div id="courseInfo" class="course-title">Cargando curso…</div>
         <div id="sessionInfo" class="muted" style="margin-top:6px;">Verificando sesión activa…</div>
@@ -57,10 +58,30 @@
         <section class="card">
           <header><h2 style="margin:0; font-size:16px;">Cámara</h2></header>
           <div class="row" style="margin-bottom:8px;">
-            <button id="startCam" class="primary">Iniciar cámara</button>
-            <button id="stopCam">Detener cámara</button>
+            <div style="flex:1; min-width:240px;">
+              <div class="row" style="margin-bottom:6px;">
+                <select id="cameraSelect" style="flex:1; min-width:200px;"></select>
+                <button id="refreshCams">Actualizar lista</button>
+              </div>
+              <div class="row">
+                <button id="startSelected" class="primary">Usar cámara seleccionada</button>
+                <button id="stopCam">Detener cámara</button>
+              </div>
+            </div>
+            <div style="flex:1; min-width:240px;">
+              <div class="row" style="margin-bottom:6px;">
+                <input id="ipCameraUrl" type="text" placeholder="URL de cámara (http/https)" style="flex:1; min-width:200px;" />
+              </div>
+              <div class="row">
+                <button id="connectIp" class="primary">Conectar IP</button>
+                <button id="clearIp">Limpiar</button>
+                <button id="flashOn">Flash ON</button>
+                <button id="flashOff">Flash OFF</button>
+              </div>
+            </div>
           </div>
           <video id="videoPreview" autoplay playsinline></video>
+          <img id="imgPreview" style="display:none" />
           <div id="cameraMsg" class="muted">Cámara no iniciada</div>
         </section>
       </div>
@@ -174,20 +195,49 @@
         hideLoadingMessages();
       })();
 
-      // =====================
-      // Cámara del navegador
-      // =====================
       let mediaStream = null;
-      async function startCamera() {
+      async function enumerateCameras() {
+        const select = document.getElementById('cameraSelect');
+        select.innerHTML = '';
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+          document.getElementById('cameraMsg').textContent = 'Enumeración de dispositivos no disponible.';
+          return;
+        }
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const cams = devices.filter(d => d.kind === 'videoinput');
+          if (cams.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'Sin cámaras detectadas';
+            select.appendChild(opt);
+            return;
+          }
+          cams.forEach((d, i) => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.textContent = d.label || `Cámara ${i+1}`;
+            select.appendChild(opt);
+          });
+        } catch (e) {
+          document.getElementById('cameraMsg').textContent = (e.message || 'No se pudo listar cámaras');
+        }
+      }
+      async function startSelectedCamera() {
         const msg = document.getElementById('cameraMsg');
+        const deviceId = document.getElementById('cameraSelect').value;
         try {
           if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             msg.textContent = 'getUserMedia no está disponible en este navegador.';
             return;
           }
-          mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+          const constraints = deviceId ? { video: { deviceId: { exact: deviceId } }, audio: false } : { video: true, audio: false };
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
           const video = document.getElementById('videoPreview');
-          video.srcObject = mediaStream;
+          video.srcObject = stream;
+          video.removeAttribute('src');
+          mediaStream = stream;
           msg.textContent = 'Cámara iniciada';
         } catch (e) {
           msg.textContent = 'No se pudo iniciar la cámara: ' + (e.message || e);
@@ -197,18 +247,105 @@
         const msg = document.getElementById('cameraMsg');
         const video = document.getElementById('videoPreview');
         try {
-          if (mediaStream) {
-            mediaStream.getTracks().forEach(t => t.stop());
-            mediaStream = null;
-          }
+          if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); }
+          mediaStream = null;
           video.srcObject = null;
+          video.removeAttribute('src');
           msg.textContent = 'Cámara detenida';
         } catch (e) {
-          msg.textContent = 'Error al detener cámara: ' + (e.message || e);
+          msg.textContent = 'No se pudo detener la cámara: ' + (e.message || e);
         }
       }
-      document.getElementById('startCam').addEventListener('click', startCamera);
+      async function connectIpCamera() {
+        const msg = document.getElementById('cameraMsg');
+        const url = (document.getElementById('ipCameraUrl').value || '').trim();
+        const video = document.getElementById('videoPreview');
+        const img = document.getElementById('imgPreview');
+        try {
+          if (!url) { msg.textContent = 'Ingresa la URL de la cámara.'; return; }
+          const lower = url.toLowerCase();
+          if (lower.startsWith('rtsp://')) { msg.textContent = 'RTSP no es compatible directamente. Usa HTTP/HLS o un proxy RTSP→HLS.'; return; }
+          if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+          video.pause();
+          video.srcObject = null;
+          const proxyUrl = '/api/admin/video_stream?url=' + encodeURIComponent(url);
+          let useImg = false;
+          try {
+            const headRes = await fetch(proxyUrl, { method: 'HEAD' });
+            const ct = (headRes.headers.get('content-type') || '').toLowerCase();
+            if (ct.includes('multipart/x-mixed-replace') || ct.includes('mjpeg')) useImg = true;
+          } catch (_) {}
+          if (useImg) {
+            video.style.display = 'none';
+            img.style.display = '';
+            img.src = proxyUrl;
+            msg.textContent = 'Cámara IP conectada (MJPEG)';
+            return;
+          }
+          img.style.display = 'none';
+          video.style.display = '';
+          video.src = proxyUrl;
+          video.load();
+          await video.play();
+          msg.textContent = 'Cámara IP conectada';
+        } catch (e) {
+          try {
+            const proxyUrl = '/api/admin/video_stream?url=' + encodeURIComponent(url);
+            video.style.display = 'none';
+            img.style.display = '';
+            img.src = proxyUrl;
+            msg.textContent = 'Cámara IP conectada (fallback imagen)';
+          } catch (_) {
+            msg.textContent = 'No se pudo conectar a la cámara IP: ' + (e.message || e);
+          }
+        }
+      }
+
+      async function toggleFlash(state) {
+        const msg = document.getElementById('cameraMsg');
+        const raw = (document.getElementById('ipCameraUrl').value || '').trim();
+        if (!raw) { msg.textContent = 'Ingresa la URL de la cámara.'; return; }
+        let origin = '';
+        try { origin = new URL(raw).origin; } catch (_) { msg.textContent = 'URL inválida'; return; }
+        const target = `${origin}/flash/${state}`;
+        try {
+          const res = await fetch(`/api/admin/camera/flash?target=${encodeURIComponent(target)}`, { headers: authHeadersJSON() });
+          const data = await res.json();
+          if (!res.ok || data.ok === false) { msg.textContent = 'No se pudo cambiar el flash'; }
+          else { msg.textContent = `Flash ${state.toUpperCase()} OK`; }
+        } catch (e) {
+          try {
+            const beacon = new Image();
+            beacon.src = target;
+            msg.textContent = `Flash ${state.toUpperCase()} solicitado`; 
+          } catch (_) {
+            msg.textContent = 'Error de red al cambiar flash';
+          }
+        }
+      }
+      function clearIpCamera() {
+        const video = document.getElementById('videoPreview');
+        const img = document.getElementById('imgPreview');
+        const msg = document.getElementById('cameraMsg');
+        try {
+          video.pause();
+          video.removeAttribute('src');
+          video.srcObject = null;
+          img.removeAttribute('src');
+          img.style.display = 'none';
+          msg.textContent = 'Fuente IP limpiada';
+        } catch (e) {
+          msg.textContent = 'No se pudo limpiar la fuente IP';
+        }
+      }
+      document.getElementById('refreshCams').addEventListener('click', enumerateCameras);
+      document.getElementById('startSelected').addEventListener('click', startSelectedCamera);
       document.getElementById('stopCam').addEventListener('click', stopCamera);
+      document.getElementById('connectIp').addEventListener('click', connectIpCamera);
+      document.getElementById('clearIp').addEventListener('click', clearIpCamera);
+      document.getElementById('flashOn').addEventListener('click', () => toggleFlash('on'));
+      document.getElementById('flashOff').addEventListener('click', () => toggleFlash('off'));
+      enumerateCameras();
     </script>
   </body>
 </html>
