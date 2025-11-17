@@ -79,7 +79,8 @@
             
             // Redirigir según el rol del usuario
             if (data.user.role === 'admin') {
-              window.location.href = '/admin/profile';
+              // Ir al panel/dashboard del administrador
+              window.location.href = '/admin/';
             } else if (data.user.role === 'advisor' || data.user.role === 'client') {
               window.location.href = '/dashboard';
             } else {

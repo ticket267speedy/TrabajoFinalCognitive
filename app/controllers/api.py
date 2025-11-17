@@ -97,7 +97,7 @@ def becario_login():
         return jsonify({"error": "No autorizado"}), 401
 
     token = create_access_token(
-        identity=row["id"],
+        identity=str(row["id"]),
         additional_claims={"email": row["email"], "role": "client"},
     )
 
@@ -223,7 +223,7 @@ def asesores_login():
         return jsonify({"error": "No autorizado"}), 401
 
     token = create_access_token(
-        identity=user.id,
+        identity=str(user.id),
         additional_claims={"email": user.email, "role": "advisor"},
     )
     return jsonify({"access_token": token}), 200
@@ -262,7 +262,7 @@ def admin_login():
         return jsonify({"error": "No autorizado"}), 401
 
     token = create_access_token(
-        identity=user.id,
+        identity=str(user.id),
         additional_claims={"email": user.email, "role": "admin"},
     )
     return jsonify({"access_token": token}), 200
@@ -430,19 +430,24 @@ def admin_course_students(course_id: int):
 @api_bp.post("/admin/attendance/manual")
 @jwt_required()
 def admin_manual_attendance():
-    """Marca asistencia manualmente para un alumno en una sesión activa."""
+    """Marca asistencia manualmente para un alumno en una sesión activa.
+
+    También devuelve si la marca fue en tardanza (>=1 minuto luego del inicio de sesión).
+    """
     if not _require_role("admin"):
         return jsonify({"error": "No autorizado"}), 401
+    # Importación perezosa para evitar errores de arranque si cambian dependencias
+    from ..services.attendance_service import mark_attendance
     data = request.get_json(silent=True) or {}
     session_id = data.get("session_id")
     student_id = data.get("student_id")
     course_id = data.get("course_id")
     if not session_id or not student_id:
         return jsonify({"error": "session_id y student_id son requeridos"}), 400
-    ok = mark_attendance(session_id=session_id, student_id=str(student_id), course_id=str(course_id) if course_id else None)
-    if not ok:
-        return jsonify({"error": "No se pudo registrar asistencia"}), 500
-    return jsonify({"status": "ok", "student_id": str(student_id)}), 200
+    result = mark_attendance(session_id=int(session_id), student_id=str(student_id), course_id=int(course_id) if course_id else None)
+    if not result or not result.get("ok"):
+        return jsonify({"error": result.get("error") or "No se pudo registrar asistencia"}), 500
+    return jsonify({"status": "ok", "student_id": str(student_id), "tardy": bool(result.get("tardy"))}), 200
 
 
 # --- Admin: Students CRUD ---
@@ -524,6 +529,86 @@ def admin_students_delete(student_id: int):
     return jsonify({"status": "deleted"}), 200
 
 
+# --- Admin: Assign courses to a student (Enrollments) ---
+
+@api_bp.get("/admin/students/<int:student_id>/enrollments")
+@jwt_required()
+def admin_student_enrollments_get(student_id: int):
+    """Lista los cursos (id y nombre) del alumno dentro de los cursos del profesor actual.
+
+    Útil para precargar selección en UI de edición.
+    """
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    admin_id = _normalize_identity(get_jwt_identity())
+    student = Student.query.get_or_404(student_id)
+    # Sólo considerar cursos que pertenecen al admin actual
+    courses = (
+        Course.query.join(Enrollment, Enrollment.course_id == Course.id)
+        .filter(Enrollment.student_id == student.id, Course.admin_id == admin_id)
+        .all()
+    )
+    items = [{"id": c.id, "name": c.name} for c in courses]
+    return jsonify({"items": items}), 200
+
+
+@api_bp.post("/admin/students/<int:student_id>/enrollments")
+@jwt_required()
+def admin_student_enrollments_set(student_id: int):
+    """Asigna cursos al alumno dentro del ámbito del profesor actual.
+
+    Body JSON: { "course_ids": [1,2,3] }
+    - Sólo se permiten IDs de cursos cuyo admin_id coincide con el admin autenticado
+    - Se eliminan matrículas existentes del alumno en cursos del admin que no estén en la nueva lista
+    - Se crean matrículas faltantes para los IDs proporcionados
+    """
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    admin_id = _normalize_identity(get_jwt_identity())
+    Student.query.get_or_404(student_id)  # Validar existencia
+    data = request.get_json(silent=True) or {}
+    incoming_ids = data.get("course_ids") or []
+    try:
+        target_ids = {int(cid) for cid in incoming_ids}
+    except Exception:
+        return jsonify({"error": "course_ids debe ser una lista de enteros"}), 400
+
+    # Limitar a cursos del admin actual
+    allowed_courses = Course.query.filter(Course.admin_id == admin_id).all()
+    allowed_ids = {c.id for c in allowed_courses}
+    target_ids = target_ids & allowed_ids  # intersección con permitidos
+
+    # Matrículas existentes del alumno en cursos del admin
+    existing = (
+        Enrollment.query.join(Course, Enrollment.course_id == Course.id)
+        .filter(Enrollment.student_id == student_id, Course.admin_id == admin_id)
+        .all()
+    )
+    existing_ids = {e.course_id for e in existing}
+
+    # Eliminar las que ya no están en target
+    to_delete_ids = existing_ids - target_ids
+    if to_delete_ids:
+        Enrollment.query.filter(Enrollment.student_id == student_id, Enrollment.course_id.in_(list(to_delete_ids))).delete(synchronize_session=False)
+
+    # Agregar nuevas (evitar duplicados)
+    to_add_ids = target_ids - existing_ids
+    for cid in to_add_ids:
+        db.session.add(Enrollment(student_id=student_id, course_id=cid))
+
+    db.session.commit()
+    # Responder con cursos finales
+    final_courses = (
+        Course.query.join(Enrollment, Enrollment.course_id == Course.id)
+        .filter(Enrollment.student_id == student_id, Course.admin_id == admin_id)
+        .all()
+    )
+    return jsonify({
+        "status": "updated",
+        "items": [{"id": c.id, "name": c.name} for c in final_courses]
+    }), 200
+
+
 # --- Admin: Courses CRUD ---
 
 @api_bp.get("/admin/courses")
@@ -597,7 +682,9 @@ def admin_session_start(course_id: int):
     active = ClassSession.query.filter_by(course_id=course_id, status="active").first()
     if active:
         return jsonify({"error": "Ya existe una sesión activa", "session_id": active.id}), 400
-    sess = ClassSession(course_id=course_id, status="active")
+    # Usar timestamp desde Python para evitar funciones SQL no soportadas por SQLite (now())
+    from datetime import datetime
+    sess = ClassSession(course_id=course_id, status="active", start_time=datetime.utcnow())
     db.session.add(sess)
     db.session.commit()
     return jsonify({"session_id": sess.id, "status": "active"}), 201
@@ -615,8 +702,9 @@ def admin_session_end(course_id: int):
     active = ClassSession.query.filter_by(course_id=course_id, status="active").first()
     if not active:
         return jsonify({"error": "No hay sesión activa"}), 400
-    from sqlalchemy.sql import func
-    active.end_time = func.now()
+    # Usar timestamp desde Python para evitar funciones SQL no soportadas por SQLite (now())
+    from datetime import datetime
+    active.end_time = datetime.utcnow()
     active.status = "finished"
     db.session.commit()
     return jsonify({"session_id": active.id, "status": "finished"}), 200
@@ -864,7 +952,7 @@ def universal_login():
     # 1) Admin
     user = User.query.filter_by(email=email, role="admin").first()
     if user and _validate_password(user, password):
-        token = create_access_token(identity=user.id, additional_claims={"email": user.email, "role": "admin"})
+        token = create_access_token(identity=str(user.id), additional_claims={"email": user.email, "role": "admin"})
         role_value = user.role if not hasattr(user.role, 'value') else user.role.value
         return jsonify({
             "access_token": token,
@@ -883,7 +971,7 @@ def universal_login():
         if _validate_password(user, password):
             # Normalizar rol a string
             role_value = user.role if not hasattr(user.role, 'value') else user.role.value
-            token = create_access_token(identity=user.id, additional_claims={"email": user.email, "role": role_value})
+            token = create_access_token(identity=str(user.id), additional_claims={"email": user.email, "role": role_value})
             return jsonify({
                 "access_token": token,
                 "user": {

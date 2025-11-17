@@ -98,6 +98,7 @@
             </div>
             <div class="row">
               <span class="badge absent" data-badge="${s.id}">Ausente</span>
+              <span class="badge" data-tardy="${s.id}" style="display:none; background:#8b5cf6; color:#fff;">Tarde</span>
               <button class="mark-manual" data-id="${s.id}">Marcar presente</button>
             </div>`;
           ul.appendChild(li);
@@ -128,18 +129,19 @@
       }
 
       function hideLoadingMessages() {
-        // Mantiene visible el título del curso y oculta solo el estado de sesión
+        // Dejamos visible el estado de sesión para claridad del profesor
+        // (antes se ocultaba tanto si había sesión activa como si no la había).
         const info2 = document.getElementById('sessionInfo');
-        if (ACTIVE_SESSION_ID || info2.textContent.startsWith('No hay sesión activa')) {
-          info2.style.display = 'none';
-        }
+        info2.style.display = '';
       }
 
-      function setPresent(studentId) {
+      function setPresent(studentId, tardy=false) {
         const id = String(studentId);
         stateMap.set(id, 'present');
         const badge = document.querySelector(`[data-badge="${id}"]`);
         if (badge) { badge.textContent = 'Presente'; badge.classList.remove('absent'); badge.classList.add('present'); }
+        const tardyBadge = document.querySelector(`[data-tardy="${id}"]`);
+        if (tardyBadge) { tardyBadge.style.display = tardy ? '' : 'none'; }
       }
 
       async function manualMark(studentId) {
@@ -150,7 +152,7 @@
           body: JSON.stringify({ session_id: ACTIVE_SESSION_ID, student_id: studentId, course_id: COURSE_ID })
         });
         const data = await res.json();
-        if (res.ok) { setPresent(studentId); document.getElementById('studentsMsg').textContent = 'Asistencia marcada manualmente'; }
+        if (res.ok) { setPresent(studentId, !!data.tardy); document.getElementById('studentsMsg').textContent = data.tardy ? 'Asistencia marcada: Tarde (>=1 min)' : 'Asistencia marcada: Presente'; }
         else { document.getElementById('studentsMsg').textContent = data.error || 'No se pudo marcar asistencia'; }
       }
 

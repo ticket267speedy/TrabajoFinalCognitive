@@ -3,306 +3,817 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Panel Administrador</title>
+    <title>Hola, Profesor</title>
+    <!-- Axis Template CSS -->
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="/axis/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/axis/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <link href="/axis/vendor/aos/aos.css" rel="stylesheet">
+    <link href="/axis/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+    <link href="/axis/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+    <link href="/axis/css/main.css" rel="stylesheet">
     <style>
-      :root { --bg: #f6f8fa; --card: #fff; --border: #d0d7de; --primary: #0969da; --text: #24292f; }
-      * { box-sizing: border-box; }
-      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
-      header { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border); }
-      h1 { margin: 0; font-size: 20px; }
-      main { padding: 20px; }
-      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-      .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
-      .card header h2 { margin: 0 0 10px; font-size: 16px; border: 2px solid #000; padding: 6px 10px; border-radius: 6px; background: #f0f2f5; display:block; width:100%; }
-      .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-      .toolbar > * { flex: 1 1 140px; min-width: 120px; }
-      input, select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
-      button { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; }
-      button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-      .list { list-style: none; padding: 0; margin: 0; }
-      .list li { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-      .msg { margin-top: 8px; font-size: 14px; }
-      .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-      .muted { color: #57606a; font-size: 12px; }
-      @media (max-width: 900px) {
-        .grid { grid-template-columns: 1fr; }
-      }
+      /* Overrides mínimos para integrarse con Bootstrap/Axis */
+      .section { overflow: visible !important; }
+      #newStudentCoursesBox, #editStudentCoursesBox { max-height: 160px; }
+      #profilePhotoPreview { max-height: 100px; }
     </style>
   </head>
   <body>
-    <header>
-      <h1>Panel Administrador</h1>
-      <nav class="row">
-        <a href="/admin/profile" style="text-decoration:none"><button type="button">Configuración</button></a>
-        <button id="logoutBtn" class="primary">Cerrar sesión</button>
-      </nav>
+    <!-- Axis Header Navigation -->
+    <header id="header" class="header d-flex align-items-center fixed-top">
+      <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
+        <a href="#students" class="logo d-flex align-items-center">
+          <h1 class="sitename" id="greetingTitle">Hola, Profesor</h1>
+        </a>
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="#students" class="active">Estudiantes</a></li>
+            <li><a href="#courses">Cursos</a></li>
+            <li><a href="#class-session">Sesión de clase</a></li>
+            <li><a href="#attendance-summary">Attendance Summary</a></li>
+            <li><a href="#invite-advisor">Invitar Asesor</a></li>
+            <li><a href="/admin/profile">Configuración</a></li>
+            <li><a href="#" id="logoutLink">Cerrar sesión</a></li>
+          </ul>
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+      </div>
     </header>
-    <main>
-      <div class="grid">
+
+    <main class="main pt-5 mt-5">
+      <div class="container" data-aos="fade-up" data-aos-delay="100">
         <!-- Estudiantes -->
-        <section class="card">
-          <header><h2>Estudiantes</h2></header>
-          <div class="toolbar">
-            <select id="filterScholarship">
+        <section id="students" class="card section">
+          <div class="container section-title">
+            <span class="subtitle">Estudiantes</span>
+            <h2>Estudiantes</h2>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <select id="filterScholarship" class="form-select w-auto">
               <option value="">Todos</option>
               <option value="true">Becarios</option>
               <option value="false">No becarios</option>
             </select>
-            <button id="refreshStudents">Actualizar</button>
+            <button id="openAddStudentModal" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">Agregar estudiante</button>
           </div>
-          <ul id="studentsList" class="list"></ul>
-          <div class="toolbar">
-            <input id="newStudentFirst" placeholder="Nombres" />
-            <input id="newStudentLast" placeholder="Apellidos" />
-            <input id="newStudentEmail" placeholder="Email" />
-            <select id="newStudentScholarship">
-              <option value="false">No becario</option>
-              <option value="true">Becario</option>
-            </select>
-            <button id="addStudent" class="primary">Agregar</button>
-          </div>
-          <div id="studentsMsg" class="msg"></div>
+          <ul id="studentsList" class="list-group"></ul>
+          <div id="studentsPagination" class="btn-group" aria-label="Paginación de estudiantes"></div>
+          <div id="studentsMsg" class="small text-muted"></div>
         </section>
 
         <!-- Cursos (solo lectura) -->
-        <section class="card">
-          <header><h2>Cursos</h2></header>
-          <ul id="coursesList" class="list"></ul>
-          <div id="coursesMsg" class="msg"></div>
+        <section id="courses" class="card section">
+          <div class="container section-title">
+            <span class="subtitle">Cursos</span>
+            <h2>Cursos</h2>
+          </div>
+          <ul id="coursesList" class="list-group"></ul>
+          <div id="coursesMsg" class="small text-muted"></div>
         </section>
 
         <!-- Sesión de clase -->
-        <section class="card">
-          <header><h2>Sesión de clase</h2></header>
-          <div class="toolbar">
-            <select id="sessionCourseSelect"></select>
-            <button id="checkSession">Ver sesión activa</button>
-            <button id="startSession" class="primary">Iniciar sesión</button>
-            <button id="endSession">Finalizar sesión</button>
+        <section id="class-session" class="card section">
+          <div class="container section-title">
+            <span class="subtitle">Sesión</span>
+            <h2>Sesión de clase</h2>
           </div>
-          <div class="muted">Al iniciar, la cámara marcará tardanza a quienes lleguen después.</div>
-          <div id="sessionMsg" class="msg"></div>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <select id="sessionCourseSelect" class="form-select w-auto"></select>
+            <button id="checkSession" class="btn btn-outline-secondary">Ver sesión activa</button>
+            <button id="startSession" class="btn btn-primary">Iniciar sesión</button>
+            <button id="endSession" class="btn btn-outline-danger">Finalizar sesión</button>
+          </div>
+          <div class="text-muted small">Regla demo: si el alumno llega 1 minuto después de iniciar la sesión, se marca como <strong>tarde</strong>.</div>
+          <div id="sessionMsg" class="small text-muted"></div>
         </section>
 
         <!-- Attendance Summary -->
-        <section class="card">
-          <header><h2>Attendance Summary</h2></header>
-          <div class="toolbar">
-            <input id="summariesSessionId" placeholder="session_id" />
-            <button id="loadSummaries">Cargar</button>
+        <section id="attendance-summary" class="card section">
+          <div class="container section-title">
+            <span class="subtitle">Resumen</span>
+            <h2>Attendance Summary</h2>
           </div>
-          <ul id="summariesList" class="list"></ul>
-          <div id="summariesMsg" class="msg"></div>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <input id="summariesSessionId" class="form-control w-auto" placeholder="session_id" />
+            <button id="loadSummaries" class="btn btn-outline-secondary">Cargar</button>
+          </div>
+          <ul id="summariesList" class="list-group"></ul>
+          <div id="summariesMsg" class="small text-muted"></div>
         </section>
 
         <!-- Invitaciones a asesores -->
-        <section class="card">
-          <header><h2>Invitar asesor</h2></header>
-          <div class="toolbar">
-            <select id="inviteCourseSelect"></select>
-            <input id="inviteEmail" type="email" placeholder="asesor@demo.com" />
-            <button id="sendInvite" class="primary">Enviar invitación</button>
+        <section id="invite-advisor" class="card section">
+          <div class="container section-title">
+            <span class="subtitle">Asesores</span>
+            <h2>Invitar asesor</h2>
           </div>
-          <div id="inviteMsg" class="msg"></div>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <select id="inviteCourseSelect" class="form-select w-auto"></select>
+            <input id="inviteEmail" type="email" class="form-control w-auto" placeholder="asesor@demo.com" />
+            <button id="sendInvite" class="btn btn-primary">Enviar invitación</button>
+          </div>
+          <div id="inviteMsg" class="small text-muted"></div>
         </section>
 
         <!-- Asistente IA (Gemini) -->
-        <section class="card" aria-labelledby="chatbotTitle">
+        <section class="card section" aria-labelledby="chatbotTitle">
           <header>
             <h2 id="chatbotTitle">Asistente IA (Gemini)</h2>
-            <div class="muted">Soporte para becas y docente</div>
+            <div class="text-muted small">Soporte para becas y docente</div>
           </header>
           <div class="content">
-            <div class="toolbar">
-              <input id="chatbotInput" type="text" placeholder="Pregunta sobre becas, cursos, asistencia…" />
-              <button id="chatbotSend" class="primary">Enviar</button>
-              <button id="chatbotReset">Reiniciar</button>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              <input id="chatbotInput" type="text" class="form-control w-auto" placeholder="Pregunta sobre becas, cursos, asistencia…" />
+              <button id="chatbotSend" class="btn btn-primary">Enviar</button>
+              <button id="chatbotReset" class="btn btn-outline-secondary">Reiniciar</button>
             </div>
-            <ul id="chatbotList" class="list" aria-live="polite"></ul>
-            <div id="chatbotMsg" class="msg"></div>
+            <ul id="chatbotList" class="list-group" aria-live="polite"></ul>
+            <div id="chatbotMsg" class="small text-muted"></div>
           </div>
         </section>
 
         <!-- Configuración Perfil -->
-        <section class="card" id="configSection" style="display:none;">
+        <section class="card section d-none" id="configSection">
           <header><h2>Configuración de perfil</h2></header>
-          <div class="toolbar">
-            <input id="profileName" placeholder="Nombre" disabled />
-            <input id="profileEmail" placeholder="Email" disabled />
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <input id="profileName" class="form-control w-auto" placeholder="Nombre" disabled />
+            <input id="profileEmail" class="form-control w-auto" placeholder="Email" disabled />
           </div>
-          <div class="toolbar">
-            <input id="profileDescription" placeholder="Descripción" />
-            <input id="profilePhoto" type="file" accept="image/*" />
-            <button id="saveProfile" class="primary">Guardar</button>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <input id="profileDescription" class="form-control w-auto" placeholder="Descripción" />
+            <input id="profilePhoto" class="form-control w-auto" type="file" accept="image/*" />
+            <button id="saveProfile" class="btn btn-primary">Guardar</button>
           </div>
-          <div class="row">
-            <img id="profilePhotoPreview" alt="Foto de perfil" style="max-height:100px; border-radius:8px; border:1px solid var(--border);" />
+          <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+            <img id="profilePhotoPreview" class="img-thumbnail rounded" alt="Foto de perfil" />
           </div>
-          <div id="profileMsg" class="msg"></div>
+          <div id="profileMsg" class="small text-muted"></div>
           <div>
-            <h3 style="margin-top:12px;">Cursos del profesor</h3>
-            <ul id="profileCourses" class="list"></ul>
+            <h3 class="mt-3">Cursos del profesor</h3>
+            <ul id="profileCourses" class="list-group"></ul>
           </div>
         </section>
       </div>
     </main>
 
+    <!-- Scroll Top Button required by Axis main.js -->
+    <a href="#" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+    <!-- Axis Vendor JS -->
+    <script src="/axis/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/axis/vendor/php-email-form/validate.js"></script>
+    <script src="/axis/vendor/aos/aos.js"></script>
+    <script src="/axis/vendor/glightbox/js/glightbox.min.js"></script>
+    <script src="/axis/vendor/purecounter/purecounter_vanilla.js"></script>
+    <script src="/axis/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
+    <script src="/axis/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+    <script src="/axis/vendor/swiper/swiper-bundle.min.js"></script>
+    <script src="/axis/js/main.js"></script>
+
+    <!-- Modal Bootstrap: Agregar estudiante -->
+    <div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentTitle" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title" id="addStudentTitle">Agregar estudiante</h3>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-6"><input id="newStudentFirst" class="form-control" placeholder="Nombres" /></div>
+              <div class="col-12 col-md-6"><input id="newStudentLast" class="form-control" placeholder="Apellidos" /></div>
+              <div class="col-12 col-md-6"><input id="newStudentEmail" class="form-control" placeholder="Email" /></div>
+              <div class="col-12 col-md-6">
+                <select id="newStudentScholarship" class="form-select">
+                  <option value="false">No becario</option>
+                  <option value="true">Becario</option>
+                </select>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div class="text-muted small mb-2">Cursos del profesor</div>
+              <div id="newStudentCoursesBox" class="border rounded p-2 overflow-auto"></div>
+            </div>
+            <div id="addStudentModalMsg" class="msg mt-2"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" id="addStudentSubmit" class="btn btn-primary">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Bootstrap: Editar estudiante -->
+    <div class="modal fade" id="editStudentModal" tabindex="-1" aria-labelledby="editStudentTitle" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title" id="editStudentTitle">Editar estudiante</h3>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-6"><input id="editStudentFirst" class="form-control" placeholder="Nombres" /></div>
+              <div class="col-12 col-md-6"><input id="editStudentLast" class="form-control" placeholder="Apellidos" /></div>
+              <div class="col-12 col-md-6"><input id="editStudentEmail" class="form-control" placeholder="Email" /></div>
+              <div class="col-12 col-md-6">
+                <select id="editStudentScholarship" class="form-select">
+                  <option value="false">No becario</option>
+                  <option value="true">Becario</option>
+                </select>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div class="text-muted small mb-2">Cursos del profesor</div>
+              <div id="editStudentCoursesBox" class="border rounded p-2 overflow-auto"></div>
+            </div>
+            <div id="editStudentModalMsg" class="msg mt-2"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" id="editStudentSave" class="btn btn-primary">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
+      // Token y helpers de autenticación
       const token = localStorage.getItem('access_token');
       function authHeaders() {
         const h = { 'Content-Type': 'application/json' };
         if (token) h['Authorization'] = `Bearer ${token}`;
         return h;
       }
+      // Algunos proyectos usan dos estilos de rutas para el admin:
+      // 1) "/api/admin/*" (definidas en api.py)
+      // 2) "/admin/api/*" (definidas en admin_controller.py)
+      // Detectamos dinámicamente cuál funciona y la reutilizamos.
+      let ADMIN_API_PREFIX = '/api/admin';
+      async function detectAdminApiPrefix() {
+        const candidates = ['/api/admin', '/admin/api'];
+        for (const prefix of candidates) {
+          try {
+            const res = await fetch(`${prefix}/profile`, { headers: authHeaders(), cache: 'no-store' });
+            if (res.ok) {
+              ADMIN_API_PREFIX = prefix;
+              return true;
+            }
+            // Si devuelve 401/422 significa que la ruta existe pero no hay token
+            if (res.status === 401 || res.status === 422) {
+              ADMIN_API_PREFIX = prefix;
+              return true;
+            }
+          } catch (e) { /* seguir probando */ }
+        }
+        return false;
+      }
+
+      // Utilidad: garantizar que el documento vuelva a ser desplazable
+      function restorePageScroll() {
+        try {
+          // Quitar backdrop de Bootstrap si quedó colgado
+          document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+          // Rehabilitar scroll del body (Bootstrap añade modal-open)
+          document.body.classList.remove('modal-open');
+          document.body.style.removeProperty('padding-right');
+          document.body.style.removeProperty('overflow');
+          // Si por algún motivo quedó activo el menú móvil del tema Axis, desactivarlo
+          document.body.classList.remove('mobile-nav-active');
+        } catch (e) {
+          console.warn('restorePageScroll warning:', e);
+        }
+      }
 
       // --- Navbar actions ---
-      document.getElementById('logoutBtn').addEventListener('click', () => {
+      document.getElementById('logoutLink').addEventListener('click', (e) => {
+        e.preventDefault();
         localStorage.removeItem('access_token');
         window.location.href = '/admin/login';
       });
       // Configuración se abre ahora en página aparte (/admin/profile)
 
       // --- Students ---
-      async function loadStudents() {
-        const scholarship = document.getElementById('filterScholarship').value;
-        const url = '/api/admin/students' + (scholarship ? `?scholarship=${scholarship}` : '');
-        const res = await fetch(url, { headers: authHeaders(), cache: 'no-store' });
-        const data = await res.json();
+      const studentsState = { items: [], page: 1, pageSize: 4 };
+
+      function renderStudentsList() {
         const list = document.getElementById('studentsList');
         list.innerHTML = '';
-        if (res.ok && Array.isArray(data.items)) {
-          data.items.forEach(s => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-              <div>
-                <strong>${s.first_name} ${s.last_name}</strong>
-                <div class="muted">${s.email || '-'} | ${s.is_scholarship_student ? 'Becario' : 'No becario'}</div>
-                <div class="muted">Cursos: ${(Array.isArray(s.courses) && s.courses.length) ? s.courses.join(', ') : '-'}</div>
-              </div>
-              <div class="row">
-                <button data-id="${s.id}" class="edit-student">Editar</button>
-                <button data-id="${s.id}" class="delete-student">Eliminar</button>
-              </div>`;
-            list.appendChild(li);
-          });
-        } else {
-          document.getElementById('studentsMsg').textContent = data.error || 'Error al cargar estudiantes';
+        const start = (studentsState.page - 1) * studentsState.pageSize;
+        const end = start + studentsState.pageSize;
+        const pageItems = studentsState.items.slice(start, end);
+        pageItems.forEach(s => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item d-flex justify-content-between align-items-start flex-wrap gap-2';
+          li.innerHTML = `
+            <div>
+              <strong>${s.first_name} ${s.last_name}</strong>
+              <div class="text-muted small">${s.email || '-'} | ${s.is_scholarship_student ? 'Becario' : 'No becario'}</div>
+              <div class="text-muted small">Cursos: ${(Array.isArray(s.courses) && s.courses.length) ? s.courses.join(', ') : '-'}</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button data-id="${s.id}" class="edit-student btn btn-sm btn-outline-primary">Editar</button>
+              <button data-id="${s.id}" class="delete-student btn btn-sm btn-outline-danger">Eliminar</button>
+            </div>`;
+          list.appendChild(li);
+        });
+      }
+
+      function renderStudentsPagination() {
+        const pag = document.getElementById('studentsPagination');
+        const totalPages = Math.max(1, Math.ceil(studentsState.items.length / studentsState.pageSize));
+        pag.innerHTML = '';
+        // Prev
+        const prev = document.createElement('button');
+        prev.textContent = 'Anterior';
+        prev.disabled = studentsState.page <= 1;
+        prev.dataset.goto = String(studentsState.page - 1);
+        prev.className = 'btn btn-sm btn-outline-secondary';
+        pag.appendChild(prev);
+        // Numeric pages (simple: show up to 6)
+        const maxToShow = 6;
+        let start = Math.max(1, studentsState.page - 2);
+        let end = Math.min(totalPages, start + maxToShow - 1);
+        if (end - start + 1 < maxToShow) {
+          start = Math.max(1, end - maxToShow + 1);
+        }
+        for (let p = start; p <= end; p++) {
+          const b = document.createElement('button');
+          b.textContent = String(p);
+          b.dataset.goto = String(p);
+          b.className = 'btn btn-sm btn-outline-secondary';
+          if (p === studentsState.page) {
+            b.className = 'btn btn-sm btn-primary active';
+          }
+          pag.appendChild(b);
+        }
+        // Next
+        const next = document.createElement('button');
+        next.textContent = 'Siguiente';
+        next.disabled = studentsState.page >= totalPages;
+        next.dataset.goto = String(studentsState.page + 1);
+        next.className = 'btn btn-sm btn-outline-secondary';
+        pag.appendChild(next);
+      }
+
+      document.getElementById('studentsPagination').addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || !btn.dataset.goto) return;
+        const targetPage = Number(btn.dataset.goto);
+        const totalPages = Math.max(1, Math.ceil(studentsState.items.length / studentsState.pageSize));
+        if (targetPage >= 1 && targetPage <= totalPages) {
+          studentsState.page = targetPage;
+          renderStudentsList();
+          renderStudentsPagination();
+        }
+      });
+
+      async function loadStudents() {
+        const scholarship = document.getElementById('filterScholarship').value;
+        // Intentar primero con el prefijo detectado; si falla, probar el alternativo
+        const prefixes = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
+        let lastError = 'Error al cargar estudiantes';
+        for (const p of prefixes) {
+          const url = `${p}/students` + (scholarship ? `?scholarship=${scholarship}` : '');
+          try {
+            const res = await fetch(url, { headers: authHeaders(), cache: 'no-store' });
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 401 || res.status === 422) {
+              document.getElementById('studentsMsg').textContent = 'No autorizado: inicia sesión como administrador';
+              setTimeout(() => { window.location.href = '/login'; }, 800);
+              return;
+            }
+            if (res.ok) {
+              // api.py devuelve {items: [...]}, admin_controller.py devuelve [...]
+              const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
+              if (Array.isArray(items)) {
+                ADMIN_API_PREFIX = p; // fijar el prefijo que funcionó
+                studentsState.items = items;
+                studentsState.page = 1; // reset a la primera página tras filtro/actualización
+                renderStudentsList();
+                renderStudentsPagination();
+                document.getElementById('studentsMsg').textContent = '';
+                return;
+              }
+            }
+            lastError = data.error || lastError;
+          } catch (e) {
+            lastError = e?.message || lastError;
+          }
+        }
+        document.getElementById('studentsMsg').textContent = lastError;
+      }
+      document.getElementById('filterScholarship').addEventListener('change', loadStudents);
+      // --- Modal: Agregar estudiante ---
+      function openAddStudentModal() {
+        try {
+          document.getElementById('addStudentModalMsg').textContent = '';
+          const modalEl = document.getElementById('addStudentModal');
+          if (window.bootstrap && bootstrap.Modal) {
+            const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
+            instance.show();
+            window.addStudentModalInstance = instance;
+          } else {
+            // Fallback simple si bootstrap no está disponible
+            modalEl.classList.add('show');
+            modalEl.style.display = 'block';
+            modalEl.removeAttribute('aria-hidden');
+          }
+        } catch (err) {
+          console.error('Error abriendo modal de agregar estudiante', err);
         }
       }
-      document.getElementById('refreshStudents').addEventListener('click', loadStudents);
-      document.getElementById('filterScholarship').addEventListener('change', loadStudents);
-      document.getElementById('addStudent').addEventListener('click', async () => {
+      function closeAddStudentModal() {
+        const modalEl = document.getElementById('addStudentModal');
+        try {
+          if (window.bootstrap && bootstrap.Modal) {
+            // Si no existe la instancia (pudo abrirse vía data-bs-toggle), la creamos
+            const instance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+            instance.hide();
+            // En algunos casos Bootstrap demora el evento hidden; aseguramos limpieza
+            setTimeout(restorePageScroll, 120);
+          } else {
+            // Fallback: ocultar por estilos y limpiar backdrop/estado del body
+            modalEl.classList.remove('show');
+            modalEl.style.display = 'none';
+            modalEl.setAttribute('aria-hidden','true');
+            const bd = document.querySelector('.modal-backdrop');
+            if (bd) bd.remove();
+            restorePageScroll();
+          }
+        } catch (err) {
+          console.error('Error cerrando modal de agregar estudiante', err);
+          // Último recurso: forzar limpieza de estilos y backdrop
+          modalEl.classList.remove('show');
+          modalEl.style.display = 'none';
+          modalEl.setAttribute('aria-hidden','true');
+          restorePageScroll();
+        }
+      }
+      document.getElementById('openAddStudentModal').addEventListener('click', openAddStudentModal);
+      document.getElementById('addStudentSubmit').addEventListener('click', async () => {
         const payload = {
           first_name: document.getElementById('newStudentFirst').value.trim(),
           last_name: document.getElementById('newStudentLast').value.trim(),
           email: document.getElementById('newStudentEmail').value.trim() || null,
           is_scholarship_student: document.getElementById('newStudentScholarship').value === 'true'
         };
-        const res = await fetch('/api/admin/students', { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
-        const data = await res.json();
-        document.getElementById('studentsMsg').textContent = res.ok ? 'Estudiante agregado' : (data.error || 'Error');
-        if (res.ok) loadStudents();
+        // Intentar con prefijo actual y hacer fallback al alternativo si falla
+        const prefixesCreate = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
+        let res = null, data = null, okCreate = false;
+        for (const p of prefixesCreate) {
+          try {
+            res = await fetch(`${p}/students`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
+            data = await res.json().catch(() => ({}));
+            if (res.ok) { ADMIN_API_PREFIX = p; okCreate = true; break; }
+          } catch (e) { /* try next */ }
+        }
+        if (!okCreate) {
+          document.getElementById('addStudentModalMsg').textContent = (data && data.error) || 'Error al agregar estudiante';
+          return;
+        }
+        // Asignar cursos seleccionados si corresponde (casilleros)
+        const selectedIds = Array.from(document.querySelectorAll('#newStudentCoursesBox input[type="checkbox"]:checked'))
+          .map(el => parseInt(el.value, 10))
+          .filter(Number.isFinite);
+        let msg = 'Estudiante agregado';
+        if (data.id && selectedIds.length > 0) {
+          const prefixesEnroll = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
+          for (const p of prefixesEnroll) {
+            try {
+              const res2 = await fetch(`${p}/students/${data.id}/enrollments`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ course_ids: selectedIds }) });
+              const data2 = await res2.json().catch(() => ({}));
+              if (res2.ok) { ADMIN_API_PREFIX = p; msg = 'Estudiante agregado y cursos asignados'; break; }
+              msg = data2.error || msg;
+            } catch (e) { /* try next */ }
+          }
+        }
+        document.getElementById('addStudentModalMsg').textContent = msg;
+        closeAddStudentModal();
+        loadStudents();
       });
       document.getElementById('studentsList').addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
+        const delBtn = e.target.closest('button.delete-student');
+        const editBtn = e.target.closest('button.edit-student');
+        if (!delBtn && !editBtn) return;
+        const id = (delBtn || editBtn).getAttribute('data-id');
         if (!id) return;
-        if (e.target.classList.contains('delete-student')) {
-          const res = await fetch(`/api/admin/students/${id}`, { method: 'DELETE', headers: authHeaders() });
-          const data = await res.json();
-          document.getElementById('studentsMsg').textContent = res.ok ? 'Eliminado' : (data.error || 'Error');
-          if (res.ok) loadStudents();
+        if (delBtn) {
+          const sure = confirm('¿Estás seguro de eliminar a este estudiante? El cambio será irreversible');
+          if (!sure) return;
+          // Intentar DELETE con fallback de prefijo
+          const prefixesDel = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
+          let delOk = false, delMsg = 'Error';
+          for (const p of prefixesDel) {
+            try {
+              const res = await fetch(`${p}/students/${id}`, { method: 'DELETE', headers: authHeaders() });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok) { ADMIN_API_PREFIX = p; delOk = true; delMsg = 'Eliminado'; break; }
+              delMsg = data.error || delMsg;
+            } catch (e) { /* try next */ }
+          }
+          document.getElementById('studentsMsg').textContent = delOk ? 'Eliminado' : delMsg;
+          if (delOk) loadStudents();
         }
-        if (e.target.classList.contains('edit-student')) {
-          const first = prompt('Nuevo nombre:');
-          const last = prompt('Nuevos apellidos:');
-          const email = prompt('Nuevo email (opcional):');
-          const res = await fetch(`/api/admin/students/${id}`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ first_name: first, last_name: last, email }) });
-          const data = await res.json();
-          document.getElementById('studentsMsg').textContent = res.ok ? 'Actualizado' : (data.error || 'Error');
-          if (res.ok) loadStudents();
+        if (editBtn) {
+          // Abrir modal de edición con datos actuales
+          const s = studentsState.items.find(it => String(it.id) === String(id));
+          if (!s) return;
+          document.getElementById('editStudentFirst').value = s.first_name || '';
+          document.getElementById('editStudentLast').value = s.last_name || '';
+          document.getElementById('editStudentEmail').value = s.email || '';
+          document.getElementById('editStudentScholarship').value = s.is_scholarship_student ? 'true' : 'false';
+          // Desmarcar todos los casilleros de cursos
+          const editBox = document.getElementById('editStudentCoursesBox');
+          if (editBox) Array.from(editBox.querySelectorAll('input[type="checkbox"]')).forEach(ch => { ch.checked = false; });
+          // Precargar cursos del alumno dentro de los cursos del admin
+          try {
+            const resE = await fetch(`${ADMIN_API_PREFIX}/students/${id}/enrollments`, { headers: authHeaders() });
+            const dataE = await resE.json().catch(() => ({}));
+            if (resE.ok && Array.isArray(dataE.items)) {
+              const ids = new Set(dataE.items.map(c => c.id));
+              if (editBox) Array.from(editBox.querySelectorAll('input[type="checkbox"]')).forEach(ch => {
+                if (ids.has(parseInt(ch.value, 10))) ch.checked = true;
+              });
+            }
+          } catch (e) { /* noop */ }
+          // Guardar id actual y abrir modal
+          window.currentEditStudentId = id;
+          document.getElementById('editStudentModalMsg').textContent = '';
+          const modalEl = document.getElementById('editStudentModal');
+          if (window.bootstrap && bootstrap.Modal) {
+            const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
+            instance.show();
+            window.editStudentModalInstance = instance;
+          } else {
+            modalEl.classList.add('show');
+            modalEl.style.display = 'block';
+            modalEl.removeAttribute('aria-hidden');
+          }
+        }
+      });
+
+      // --- Modal: Editar estudiante ---
+      function closeEditStudentModal() {
+        const modalEl = document.getElementById('editStudentModal');
+        try {
+          if (window.bootstrap && bootstrap.Modal) {
+            const instance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+            instance.hide();
+            setTimeout(restorePageScroll, 120);
+          } else {
+            // Fallback si Bootstrap no está disponible
+            modalEl.classList.remove('show');
+            modalEl.style.display = 'none';
+            modalEl.setAttribute('aria-hidden','true');
+            restorePageScroll();
+          }
+        } catch (err) {
+          console.error('Error cerrando modal de edición', err);
+          // Último recurso: ocultar por estilos
+          modalEl.classList.remove('show');
+          modalEl.style.display = 'none';
+          modalEl.setAttribute('aria-hidden','true');
+          restorePageScroll();
+        }
+      }
+      document.getElementById('editStudentSave').addEventListener('click', async () => {
+        const id = window.currentEditStudentId;
+        if (!id) return;
+        const payload = {
+          first_name: document.getElementById('editStudentFirst').value.trim(),
+          last_name: document.getElementById('editStudentLast').value.trim(),
+          email: document.getElementById('editStudentEmail').value.trim() || null,
+          is_scholarship_student: document.getElementById('editStudentScholarship').value === 'true'
+        };
+        // PATCH con fallback de prefijo
+        let ok = false, data = null;
+        const prefixesUpd = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
+        for (const p of prefixesUpd) {
+          try {
+            const res = await fetch(`${p}/students/${id}`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify(payload) });
+            data = await res.json().catch(() => ({}));
+            if (res.ok) { ADMIN_API_PREFIX = p; ok = true; break; }
+          } catch (e) { /* try next */ }
+        }
+        // Sync cursos
+        const selectedIds = Array.from(document.querySelectorAll('#editStudentCoursesBox input[type="checkbox"]:checked'))
+          .map(el => parseInt(el.value, 10))
+          .filter(Number.isFinite);
+        // Enrollments con fallback de prefijo
+        let okEnroll = false, errEnroll = 'Error';
+        const prefixesEnroll2 = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
+        for (const p of prefixesEnroll2) {
+          try {
+            const res2 = await fetch(`${p}/students/${id}/enrollments`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ course_ids: selectedIds }) });
+            const data2 = await res2.json().catch(() => ({}));
+            if (res2.ok) { ADMIN_API_PREFIX = p; okEnroll = true; break; }
+            errEnroll = data2.error || errEnroll;
+          } catch (e) { /* try next */ }
+        }
+        const allOk = ok && (selectedIds.length === 0 ? true : okEnroll);
+        document.getElementById('editStudentModalMsg').textContent = allOk ? 'Actualizado' : ((data && data.error) || errEnroll || 'Error');
+        if (allOk) {
+          closeEditStudentModal();
+          window.currentEditStudentId = null;
+          loadStudents();
         }
       });
 
       // --- Courses ---
       async function loadCourses() {
-        const res = await fetch('/api/admin/courses', { headers: authHeaders() });
-        const data = await res.json();
         const list = document.getElementById('coursesList');
         const select1 = document.getElementById('sessionCourseSelect');
         const select2 = document.getElementById('inviteCourseSelect');
+        const box3 = document.getElementById('newStudentCoursesBox');
+        const box4 = document.getElementById('editStudentCoursesBox');
         list.innerHTML = '';
         select1.innerHTML = '';
         select2.innerHTML = '';
-        if (res.ok && Array.isArray(data.items)) {
-          data.items.forEach(c => {
-            const li = document.createElement('li');
-            li.innerHTML = `<div><strong>${c.name}</strong> <span class="muted">#${c.id}</span></div>`;
-            list.appendChild(li);
-            const opt1 = new Option(c.name, c.id);
-            const opt2 = new Option(c.name, c.id);
-            select1.add(opt1);
-            select2.add(opt2);
-          });
-        } else {
-          document.getElementById('coursesMsg').textContent = data.error || 'Error al cargar cursos';
+        if (box3) box3.innerHTML = '';
+        if (box4) box4.innerHTML = '';
+        const prefixes = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
+        let lastError = 'Error al cargar cursos';
+        for (const p of prefixes) {
+          try {
+            const res = await fetch(`${p}/courses`, { headers: authHeaders() });
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 401 || res.status === 422) {
+              document.getElementById('coursesMsg').textContent = 'No autorizado: inicia sesión como administrador';
+              setTimeout(() => { window.location.href = '/login'; }, 800);
+              return;
+            }
+            if (res.ok) {
+              const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
+              if (Array.isArray(items)) {
+                ADMIN_API_PREFIX = p;
+                window.adminCoursesCache = items;
+                items.forEach(c => {
+                  const li = document.createElement('li');
+                  li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                  li.innerHTML = `<div><strong>${c.name}</strong> <span class="text-muted small">#${c.id}</span></div>`;
+                  list.appendChild(li);
+                  const opt1 = new Option(c.name, c.id);
+                  const opt2 = new Option(c.name, c.id);
+                  select1.add(opt1);
+                  select2.add(opt2);
+                  // Renderizar casilleros para selección múltiple en creación/edición
+                  if (box3) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'form-check form-check-inline';
+                    wrap.innerHTML = `
+                      <input class="form-check-input" type="checkbox" value="${c.id}" data-course-id="${c.id}" id="new-course-${c.id}" />
+                      <label class="form-check-label" for="new-course-${c.id}">${c.id} - ${c.name}</label>`;
+                    box3.appendChild(wrap);
+                  }
+                  if (box4) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'form-check form-check-inline';
+                    wrap.innerHTML = `
+                      <input class="form-check-input" type="checkbox" value="${c.id}" data-course-id="${c.id}" id="edit-course-${c.id}" />
+                      <label class="form-check-label" for="edit-course-${c.id}">${c.id} - ${c.name}</label>`;
+                    box4.appendChild(wrap);
+                  }
+                });
+                document.getElementById('coursesMsg').textContent = '';
+                return;
+              }
+            }
+            lastError = data.error || lastError;
+          } catch (e) {
+            lastError = e?.message || lastError;
+          }
         }
+        document.getElementById('coursesMsg').textContent = lastError;
       }
       // Eliminado botón de refrescar cursos: loadCourses se llama en bootstrap
 
       // --- Session Control ---
+      function httpErrorMessage(status, data, textFallback) {
+        const msg = (data && data.error) || textFallback || '';
+        return `HTTP ${status}${msg ? `: ${msg}` : ''}`;
+      }
+
+      async function parseResponse(res) {
+        try { return await res.json(); } catch (e) {
+          try { const t = await res.text(); return { error: t?.slice(0, 180) || '' }; } catch { return {}; }
+        }
+      }
+
       document.getElementById('checkSession').addEventListener('click', async () => {
         const courseId = document.getElementById('sessionCourseSelect').value;
         if (!courseId) return;
-        const res = await fetch(`/api/admin/courses/${courseId}/session/active`, { headers: authHeaders() });
-        const data = await res.json();
-        if (res.status === 401) {
-          document.getElementById('sessionMsg').textContent = 'No autorizado: inicia sesión como administrador';
-          return;
+        await detectAdminApiPrefix();
+        // Intentar con prefijo actual y hacer fallback al alternativo si hiciera falta
+        const prefixes = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
+        let redirected = false;
+        let lastData = null;
+        let lastStatus = null;
+        for (const p of prefixes) {
+          try {
+            const res = await fetch(`${p}/courses/${courseId}/session/active`, { headers: authHeaders() });
+            const data = await parseResponse(res);
+            lastData = data; lastStatus = res.status;
+            if (res.status === 401 || res.status === 403 || res.status === 422) {
+              document.getElementById('sessionMsg').textContent = data.error || 'No autorizado: inicia sesión como administrador';
+              return;
+            }
+            if (res.ok && data.active && data.session && data.session.id) {
+              ADMIN_API_PREFIX = p; // fijar el prefijo válido
+              window.location.href = `/admin/course/${courseId}/session`;
+              redirected = true;
+              break;
+            }
+          } catch (e) { /* probar siguiente prefijo */ }
         }
-        if (data.active && data.session && data.session.id) {
-          // Redirigir a la página de sesión activa del curso
-          window.location.href = `/admin/course/${courseId}/session`;
-        } else {
-          document.getElementById('sessionMsg').textContent = 'Sin sesión activa';
+        if (!redirected) {
+          // Si hubo respuesta 200 pero sin sesión activa, mostrar mensaje claro
+          if (lastStatus === 200 && lastData && lastData.active === false) {
+            document.getElementById('sessionMsg').textContent = 'Sin sesión activa';
+          } else {
+            document.getElementById('sessionMsg').textContent = (lastData && lastData.error) || httpErrorMessage(lastStatus || 0, lastData || {}, '') || 'No se pudo verificar la sesión activa';
+          }
         }
       });
+
       document.getElementById('startSession').addEventListener('click', async () => {
         const courseId = document.getElementById('sessionCourseSelect').value;
         if (!courseId) return;
-        const res = await fetch(`/api/admin/courses/${courseId}/session/start`, { method: 'POST', headers: authHeaders() });
-        const data = await res.json();
-        if (res.status === 401) {
-          document.getElementById('sessionMsg').textContent = 'No autorizado: inicia sesión como administrador';
+        await detectAdminApiPrefix();
+        const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}/session/start`, { method: 'POST', headers: authHeaders() });
+        const data = await parseResponse(res);
+        if (res.status === 401 || res.status === 403 || res.status === 422) {
+          document.getElementById('sessionMsg').textContent = data.error || 'No autorizado: inicia sesión como administrador';
           return;
         }
-        document.getElementById('sessionMsg').textContent = res.ok ? `Sesión iniciada #${data.session_id}` : (data.error || 'Error');
+        if (res.ok && data.session_id) {
+          document.getElementById('sessionMsg').textContent = `Sesión iniciada #${data.session_id}`;
+          // Redirigir automáticamente a la vista de sesión activa
+          setTimeout(() => {
+            window.location.href = `/admin/course/${courseId}/session`;
+          }, 400);
+        } else {
+          document.getElementById('sessionMsg').textContent = data.error || httpErrorMessage(res.status, data, '') || 'Error al iniciar sesión de clase';
+        }
       });
+
       document.getElementById('endSession').addEventListener('click', async () => {
         const courseId = document.getElementById('sessionCourseSelect').value;
         if (!courseId) return;
-        const res = await fetch(`/api/admin/courses/${courseId}/session/end`, { method: 'POST', headers: authHeaders() });
-        const data = await res.json();
-        if (res.status === 401) {
-          document.getElementById('sessionMsg').textContent = 'No autorizado: inicia sesión como administrador';
+        await detectAdminApiPrefix();
+        const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}/session/end`, { method: 'POST', headers: authHeaders() });
+        const data = await parseResponse(res);
+        if (res.status === 401 || res.status === 403 || res.status === 422) {
+          document.getElementById('sessionMsg').textContent = data.error || 'No autorizado: inicia sesión como administrador';
           return;
         }
-        document.getElementById('sessionMsg').textContent = res.ok ? `Sesión finalizada #${data.session_id}` : (data.error || 'Error');
+        document.getElementById('sessionMsg').textContent = res.ok ? `Sesión finalizada #${data.session_id}` : (data.error || httpErrorMessage(res.status, data, 'Error'));
       });
 
       // Guardia de rol: si el token no es de admin, redirecciona a login
       async function assertAdminOrRedirect() {
+        // Si no hay token, redirigir inmediatamente antes de hacer llamadas
+        if (!localStorage.getItem('access_token')) {
+          window.location.href = '/login';
+          return false;
+        }
         try {
-          const res = await fetch('/api/admin/profile', { headers: authHeaders(), cache: 'no-store' });
-          if (res.status === 401) {
+          // Detectar prefijo de API válido (ver arriba)
+          await detectAdminApiPrefix();
+          const res = await fetch(`${ADMIN_API_PREFIX}/profile`, { headers: authHeaders(), cache: 'no-store' });
+          if (!res.ok || res.status === 401 || res.status === 422) {
             document.getElementById('sessionMsg').textContent = 'No autorizado: inicia sesión como administrador';
-            setTimeout(() => { window.location.href = '/login'; }, 1200);
+            setTimeout(() => { window.location.href = '/login'; }, 800);
+            return false;
           }
+          return true;
         } catch (e) {
-          // silencio: mostramos mensaje genérico
+          document.getElementById('sessionMsg').textContent = 'No se pudo verificar la sesión';
+          return false;
         }
       }
 
-      assertAdminOrRedirect();
+      async function bootstrap() {
+        const ok = await assertAdminOrRedirect();
+        if (!ok) return;
+        // Cargar datos iniciales sólo si el usuario está autorizado
+        loadStudents();
+        loadCourses();
+        loadProfile();
+        // Seguridad: asegurar que el documento sea desplazable tras la carga
+        restorePageScroll();
+        // Escuchar cierre de modales para limpiar correctamente el estado del body
+        ['addStudentModal','editStudentModal'].forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener('hidden.bs.modal', restorePageScroll);
+        });
+      }
+      bootstrap();
 
       // --- Summaries ---
       async function loadSummaries() {
@@ -315,13 +826,14 @@
         if (res.ok && Array.isArray(data.items)) {
           data.items.forEach(a => {
             const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-start flex-wrap gap-2';
             li.innerHTML = `
               <div>
                 Alumno #${a.student_id} | Sesión #${a.session_id}
-                <div class="muted">Presencia: ${a.presence_percentage}% ${a.is_manual_override ? '(Manual)' : ''}</div>
+                <div class="text-muted small">Presencia: ${a.presence_percentage}% ${a.is_manual_override ? '(Manual)' : ''}</div>
               </div>
-              <div class="row">
-                <button data-id="${a.id}" class="edit-summary">Editar</button>
+              <div class="d-flex flex-wrap gap-2">
+                <button data-id="${a.id}" class="edit-summary btn btn-sm btn-outline-primary">Editar</button>
               </div>`;
             list.appendChild(li);
           });
@@ -354,19 +866,37 @@
       });
 
 
-      // bootstrap
-      loadStudents();
-      loadCourses();
+      // bootstrap movido arriba para verificar sesión primero
 
       // --- Profile ---
       async function loadProfile() {
-        const res = await fetch('/api/admin/profile', { headers: authHeaders() });
-        const data = await res.json();
-        if (!res.ok) {
-          document.getElementById('profileMsg').textContent = data.error || 'Error al cargar perfil';
+        // Intentar con el prefijo detectado y fallback
+        const prefixes = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
+        let data = null;
+        for (const p of prefixes) {
+          try {
+            const res = await fetch(`${p}/profile`, { headers: authHeaders() });
+            const d = await res.json().catch(() => ({}));
+            if (!res.ok || res.status === 422) {
+              if (res.status === 401 || res.status === 422) {
+                document.getElementById('profileMsg').textContent = d.error || 'No autorizado: inicia sesión como administrador';
+                setTimeout(() => { window.location.href = '/login'; }, 800);
+                return;
+              }
+              // probar siguiente prefijo
+              continue;
+            }
+            ADMIN_API_PREFIX = p;
+            data = d;
+            break;
+          } catch (e) { /* probar siguiente */ }
+        }
+        if (!data) {
+          document.getElementById('profileMsg').textContent = 'Error al cargar perfil';
           return;
         }
-        document.getElementById('profileName').value = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+        const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+        document.getElementById('profileName').value = fullName;
         document.getElementById('profileEmail').value = data.email || '';
         document.getElementById('profileDescription').value = data.description || '';
         document.getElementById('profilePhotoPreview').src = data.profile_photo_url ? data.profile_photo_url : '';
@@ -374,22 +904,30 @@
         ul.innerHTML = '';
         (data.courses || []).forEach(c => {
           const li = document.createElement('li');
+          li.className = 'list-group-item';
           li.textContent = c.name;
           ul.appendChild(li);
         });
+        // Actualizar saludo en el encabezado y el título del documento
+        const greetEl = document.getElementById('greetingTitle');
+        if (greetEl) {
+          const greetName = fullName || (data.email || 'Profesor');
+          greetEl.textContent = `Hola, ${greetName}`;
+          document.title = `Hola, ${greetName}`;
+        }
       }
       document.getElementById('saveProfile').addEventListener('click', async () => {
         const description = document.getElementById('profileDescription').value.trim();
         let ok = true;
         // Save description
-        const res1 = await fetch('/api/admin/profile', { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ description }) });
+        const res1 = await fetch(`${ADMIN_API_PREFIX}/profile`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ description }) });
         ok = ok && res1.ok;
         // Save photo if chosen
         const file = document.getElementById('profilePhoto').files[0];
         if (file) {
           const fd = new FormData();
           fd.append('photo', file);
-          const res2 = await fetch('/api/admin/profile/photo', { method: 'POST', headers: { 'Authorization': authHeaders()['Authorization'] }, body: fd });
+          const res2 = await fetch(`${ADMIN_API_PREFIX}/profile/photo`, { method: 'POST', headers: { 'Authorization': authHeaders()['Authorization'] }, body: fd });
           ok = ok && res2.ok;
         }
         document.getElementById('profileMsg').textContent = ok ? 'Perfil actualizado' : 'Error al guardar perfil';
