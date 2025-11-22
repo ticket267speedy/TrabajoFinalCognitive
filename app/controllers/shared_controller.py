@@ -8,6 +8,11 @@ shared_bp = Blueprint("shared", __name__)
 
 # ==================== VISTAS COMPARTIDAS ====================
 
+@shared_bp.get("/")
+def landing_view():
+    """Landing page / Portada principal"""
+    return render_template("shared/landing.html")
+
 @shared_bp.get("/login")
 def login_view():
     """Vista de login general"""

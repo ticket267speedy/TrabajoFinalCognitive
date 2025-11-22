@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CogniPass - Sistema de Asistencia con Reconocimiento Facial</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+        line-height: 1.6;
+        color: #111827;
+        background: #FFFFFF;
+      }
+
+      /* Navbar - Corporate Clean */
+      nav {
+        background: #FFFFFF;
+        border-bottom: 1px solid #E5E7EB;
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+
+      .logo {
+        color: #1E3A8A;
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        letter-spacing: -0.5px;
+      }
+
+      .logo i {
+        font-size: 1.75rem;
+        color: #2563EB;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 2.5rem;
+        list-style: none;
+      }
+
+      .nav-links a {
+        color: #4B5563;
+        text-decoration: none;
+        transition: color 0.2s ease;
+        font-weight: 500;
+        font-size: 0.9375rem;
+      }
+
+      .nav-links a:hover {
+        color: #2563EB;
+      }
+
+      /* Hero Section - Clean & Professional */
+      .hero {
+        background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
+        color: white;
+        text-align: center;
+        padding: 5.5rem 2rem;
+        min-height: 480px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .hero h1 {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        font-weight: 700;
+        letter-spacing: -1px;
+      }
+
+      .hero p {
+        font-size: 1.125rem;
+        margin-bottom: 2.5rem;
+        max-width: 700px;
+        opacity: 0.95;
+        font-weight: 400;
+      }
+
+      .cta-button {
+        background: white;
+        color: #1E3A8A;
+        padding: 0.875rem 2.25rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
+      }
+
+      .cta-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Features Section */
+      .features {
+        padding: 4.5rem 2rem;
+        background: #F3F4F6;
+      }
+
+      .features-container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .features h2 {
+        text-align: center;
+        font-size: 2.25rem;
+        margin-bottom: 3.5rem;
+        color: #111827;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+      }
+
+      .feature-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 6px;
+        border: 1px solid #E5E7EB;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        text-align: center;
+        transition: all 0.2s ease;
+      }
+
+      .feature-card:hover {
+        border-color: #D1D5DB;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .feature-card i {
+        font-size: 2.5rem;
+        color: #2563EB;
+        margin-bottom: 1rem;
+      }
+
+      .feature-card h3 {
+        font-size: 1.125rem;
+        margin-bottom: 0.75rem;
+        color: #111827;
+        font-weight: 600;
+      }
+
+      .feature-card p {
+        color: #4B5563;
+        font-size: 0.9375rem;
+        line-height: 1.6;
+      }
+
+      /* About Section */
+      .about {
+        padding: 4.5rem 2rem;
+        background: white;
+      }
+
+      .about-container {
+        max-width: 900px;
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      .about h2 {
+        font-size: 2.25rem;
+        margin-bottom: 2.5rem;
+        color: #111827;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+
+      .about p {
+        font-size: 1rem;
+        color: #4B5563;
+        line-height: 1.8;
+        margin-bottom: 1.5rem;
+        font-weight: 400;
+      }
+
+      /* Footer - Corporate */
+      footer {
+        background: #1F2937;
+        color: #E5E7EB;
+        text-align: center;
+        padding: 2rem;
+        border-top: 1px solid #374151;
+        font-size: 0.875rem;
+      }
+
+      footer p {
+        margin: 0;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .hero h1 {
+          font-size: 2rem;
+        }
+
+        .hero p {
+          font-size: 1rem;
+        }
+
+        .nav-links {
+          gap: 1.5rem;
+          font-size: 0.875rem;
+        }
+
+        .features h2,
+        .about h2 {
+          font-size: 1.75rem;
+        }
+
+        .features-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav>
+      <div class="logo">
+        <i class="fas fa-graduation-cap"></i>
+        CogniPass
+      </div>
+      <ul class="nav-links">
+        <li><a href="#features">Características</a></li>
+        <li><a href="#about">Acerca de</a></li>
+      </ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <h1>CogniPass</h1>
+      <p>Sistema inteligente de asistencia académica con reconocimiento facial</p>
+      <a href="/login" class="cta-button">
+        <i class="fas fa-sign-in-alt"></i> Ingresar al Sistema
+      </a>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+      <div class="features-container">
+        <h2>Características Principales</h2>
+        <div class="features-grid">
+          <div class="feature-card">
+            <i class="fas fa-camera"></i>
+            <h3>Reconocimiento Facial</h3>
+            <p>Tecnología de IA avanzada para identificar automáticamente a los estudiantes</p>
+          </div>
+          <div class="feature-card">
+            <i class="fas fa-book"></i>
+            <h3>Gestión de Cursos</h3>
+            <p>Administra múltiples cursos y estudiantes de forma centralizada</p>
+          </div>
+          <div class="feature-card">
+            <i class="fas fa-chart-line"></i>
+            <h3>Reportes Analíticos</h3>
+            <p>Obtén información detallada sobre la asistencia del alumnado</p>
+          </div>
+          <div class="feature-card">
+            <i class="fas fa-hourglass-end"></i>
+            <h3>Registro en Tiempo Real</h3>
+            <p>Marca de asistencia instantánea durante la clase</p>
+          </div>
+          <div class="feature-card">
+            <i class="fas fa-shield-alt"></i>
+            <h3>Seguridad Empresarial</h3>
+            <p>Datos encriptados y acceso controlado por roles</p>
+          </div>
+          <div class="feature-card">
+            <i class="fas fa-server"></i>
+            <h3>Infraestructura Cloud</h3>
+            <p>Acceso desde cualquier lugar con conexión a Internet</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about" id="about">
+      <div class="about-container">
+        <h2>Acerca de CogniPass</h2>
+        <p>
+          CogniPass es una solución educativa que utiliza reconocimiento facial 
+          para optimizar el proceso de toma de asistencia en instituciones académicas.
+        </p>
+        <p>
+          Con CogniPass, los docentes pueden marcar automáticamente la asistencia de sus estudiantes 
+          sin necesidad de mantener registros manuales, mejorando eficiencia y precisión en la gestión académica.
+        </p>
+        <p>
+          Nuestro sistema está diseñado para ser intuitivo, seguro y escalable, 
+          adaptándose a las necesidades de instituciones de todos los tamaños.
+        </p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2025 CogniPass. Todos los derechos reservados.</p>
+    </footer>
+  </body>
+</html>

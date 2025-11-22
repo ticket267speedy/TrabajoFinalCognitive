@@ -17,13 +17,8 @@ def update_database():
     app = create_app()
     
     with app.app_context():
-        # Asegurar que el esquema existe en entornos locales (SQLite)
-        # En caso de incompatibilidad con migraciones (p.e. ALTER ENUM en SQLite),
-        # creamos las tablas a partir de los modelos.
-        try:
-            db.create_all()
-        except Exception as e:
-            print(f"⚠️ No se pudo crear el esquema automáticamente: {e}")
+        # Usar migraciones de Alembic (Flask-Migrate) para actualizaciones de esquema
+        # Las tablas deben estar creadas en Supabase
         try:
             # Limpiar datos existentes
             print("🧹 Limpiando datos existentes...")

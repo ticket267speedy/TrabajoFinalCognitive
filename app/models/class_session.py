@@ -7,9 +7,7 @@ class ClassSession(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
-    # Usar CURRENT_TIMESTAMP para compatibilidad con SQLite en el servidor.
-    # Nota: el modelo define el default, pero para evitar errores en bases ya creadas,
-    # en los endpoints se establece explícitamente el timestamp desde Python.
+    # PostgreSQL timestamp with timezone support
     start_time = db.Column(db.DateTime(timezone=True), server_default=text('CURRENT_TIMESTAMP'))
     end_time = db.Column(db.DateTime(timezone=True), nullable=True)
     status = db.Column(

@@ -1,0 +1,61 @@
+# Entorno y secretos
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Base de datos local
+*.db
+*.sqlite
+instance/
+
+# Logs
+*.log
+logs/
+
+# Compilados
+*.pyc
+
+# Modelos locales (opcional, pero recomendado)
+# modelo_caras.pkl
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+.dockerignore

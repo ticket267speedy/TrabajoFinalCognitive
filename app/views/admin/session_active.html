@@ -27,6 +27,10 @@
       .course-title { font-weight:600; font-size:16px; color: var(--text); }
       /* Estilo de títulos de sección como recuadro negro, ancho completo */
       .card header h2 { margin:0 0 10px; font-size:16px; display:block; width:100%; }
+      .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; }
+      .modal { background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px; width:320px; text-align:center; }
+      .modal h3 { margin:0 0 10px; font-size:16px; }
+      .count { font-size:32px; font-weight:700; }
     </style>
   </head>
   <body data-course-id="{{ course_id }}">
@@ -44,46 +48,78 @@
 
       <div class="grid" style="margin-top:16px;">
         <section class="card">
-          <header class="row" style="justify-content:space-between;">
-            <h2 style="margin:0; font-size:16px;">Alumnos del curso</h2>
-            <div class="muted">Estado cambia rojo→verde al detectar presencia</div>
-          </header>
-          <ul id="studentsList" class="list"></ul>
-          <div id="studentsMsg" class="muted"></div>
-          <!-- Selector oculto para compatibilidad con JS existente -->
-          <select id="studentSelect" style="display:none"></select>
-        </section>
-
-        <!-- Cámara local (vista previa) -->
-        <section class="card">
-          <header><h2 style="margin:0; font-size:16px;">Cámara</h2></header>
-          <div class="row" style="margin-bottom:8px;">
-            <div style="flex:1; min-width:240px;">
-              <div class="row" style="margin-bottom:6px;">
-                <select id="cameraSelect" style="flex:1; min-width:200px;"></select>
-                <button id="refreshCams">Actualizar lista</button>
-              </div>
-              <div class="row">
-                <button id="startSelected" class="primary">Usar cámara seleccionada</button>
-                <button id="stopCam">Detener cámara</button>
-              </div>
-            </div>
-            <div style="flex:1; min-width:240px;">
-              <div class="row" style="margin-bottom:6px;">
-                <input id="ipCameraUrl" type="text" placeholder="URL de cámara (http/https)" style="flex:1; min-width:200px;" />
-              </div>
-              <div class="row">
-                <button id="connectIp" class="primary">Conectar IP</button>
-                <button id="clearIp">Limpiar</button>
-                <button id="flashOn">Flash ON</button>
-                <button id="flashOff">Flash OFF</button>
-              </div>
+          <header><h2 style="margin:0; font-size:16px;">Cámaras</h2></header>
+          <div style="margin-bottom:12px;">
+            <h3 style="margin:6px 0; font-size:15px;">Cámara de entrada</h3>
+            <img id="camEntrada" alt="Cámara de entrada" style="display:none" />
+            <div class="row" style="margin-top:6px;">
+              <button id="entradaOn">Encender cámara</button>
+              <button id="entradaOff">Apagar cámara</button>
             </div>
           </div>
-          <video id="videoPreview" autoplay playsinline></video>
-          <img id="imgPreview" style="display:none" />
-          <div id="cameraMsg" class="muted">Cámara no iniciada</div>
+          <div>
+            <h3 style="margin:6px 0; font-size:15px;">Cámara de salida</h3>
+            <img id="camSalida" alt="Cámara de salida" style="display:none" />
+            <div class="row" style="margin-top:6px;">
+              <button id="salidaOn">Encender cámara</button>
+              <button id="salidaOff">Apagar cámara</button>
+            </div>
+          </div>
+          <div id="cameraMsg" class="muted" style="margin-top:8px;">Cámaras apagadas</div>
         </section>
+
+        <section class="card">
+          <header><h2 style="margin:0; font-size:16px;">Reconocimiento facial</h2></header>
+          <div class="row" style="margin-bottom:8px;">
+            <button id="btnCapture">Capturar rostros</button>
+            <button id="btnModel" class="primary">Introducir nuevo alumno(s)</button>
+            <button id="btnRecognize">Registrar asistencia</button>
+            <button id="btnRecognizeStop">Detener registro</button>
+          </div>
+          <div class="row" style="margin-bottom:8px;">
+            <label for="captureSource">Fuente de captura:</label>
+            <select id="captureSource" style="padding:8px;border:1px solid var(--border);border-radius:8px;">
+              <option value="entrada">Cámara de entrada</option>
+              <option value="salida">Cámara de salida</option>
+            </select>
+          </div>
+          <div id="aiMsg" class="muted"></div>
+        </section>
+      </div>
+
+      <section class="card" style="margin-top:16px;">
+        <header class="row" style="justify-content:space-between;">
+          <h2 style="margin:0; font-size:16px;">Alumnos del curso</h2>
+          <div class="muted">Estado cambia rojo→verde al detectar presencia</div>
+        </header>
+        <ul id="studentsList" class="list"></ul>
+        <div id="studentsMsg" class="muted"></div>
+        <!-- Selector oculto para compatibilidad con JS existente -->
+        <select id="studentSelect" style="display:none"></select>
+      </section>
+
+      <div id="captureModal" class="overlay" style="display:none">
+        <div class="modal">
+          <h3>Captura de rostros</h3>
+          <input id="captureName" type="text" placeholder="Nombre de la persona" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;" />
+          <div class="row" style="justify-content:center;margin-bottom:10px;">
+            <button id="captureStartBtn" class="primary">Iniciar</button>
+            <button id="captureCancelBtn">Cancelar</button>
+          </div>
+          <div id="preCount" class="count"></div>
+          <div id="activeCount" class="muted"></div>
+          <div id="modalMsg" class="muted" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div id="modelOverlay" class="overlay" style="display:none">
+        <div class="modal">
+          <h3>Generando modelo</h3>
+          <div style="width:100%;height:10px;background:#eee;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+            <div id="modelProgressBar" style="height:100%;width:0%;background:var(--primary);"></div>
+          </div>
+          <div id="modelProgressText" class="muted" style="margin-top:8px;">0%</div>
+        </div>
       </div>
 
     </main>
@@ -301,28 +337,6 @@
         }
       }
 
-      async function toggleFlash(state) {
-        const msg = document.getElementById('cameraMsg');
-        const raw = (document.getElementById('ipCameraUrl').value || '').trim();
-        if (!raw) { msg.textContent = 'Ingresa la URL de la cámara.'; return; }
-        let origin = '';
-        try { origin = new URL(raw).origin; } catch (_) { msg.textContent = 'URL inválida'; return; }
-        const target = `${origin}/flash/${state}`;
-        try {
-          const res = await fetch(`/api/admin/camera/flash?target=${encodeURIComponent(target)}`, { headers: authHeadersJSON() });
-          const data = await res.json();
-          if (!res.ok || data.ok === false) { msg.textContent = 'No se pudo cambiar el flash'; }
-          else { msg.textContent = `Flash ${state.toUpperCase()} OK`; }
-        } catch (e) {
-          try {
-            const beacon = new Image();
-            beacon.src = target;
-            msg.textContent = `Flash ${state.toUpperCase()} solicitado`; 
-          } catch (_) {
-            msg.textContent = 'Error de red al cambiar flash';
-          }
-        }
-      }
       function clearIpCamera() {
         const video = document.getElementById('videoPreview');
         const img = document.getElementById('imgPreview');
@@ -338,14 +352,192 @@
           msg.textContent = 'No se pudo limpiar la fuente IP';
         }
       }
-      document.getElementById('refreshCams').addEventListener('click', enumerateCameras);
-      document.getElementById('startSelected').addEventListener('click', startSelectedCamera);
-      document.getElementById('stopCam').addEventListener('click', stopCamera);
-      document.getElementById('connectIp').addEventListener('click', connectIpCamera);
-      document.getElementById('clearIp').addEventListener('click', clearIpCamera);
-      document.getElementById('flashOn').addEventListener('click', () => toggleFlash('on'));
-      document.getElementById('flashOff').addEventListener('click', () => toggleFlash('off'));
-      enumerateCameras();
+      
+      function toggleCamera(origin, state) {
+        const isEntrada = origin.includes('122');
+        const img = document.getElementById(isEntrada ? 'camEntrada' : 'camSalida');
+        const msg = document.getElementById('cameraMsg');
+        if (state === 'off') {
+          if (img) { img.src = ''; img.style.display = 'none'; }
+          if (msg) msg.textContent = `Cámara ${isEntrada ? 'entrada' : 'salida'} APAGADA`;
+          return;
+        }
+        const url = '/api/admin/video_stream?url=' + encodeURIComponent(`${origin}/stream`);
+        if (img) { img.style.display = 'block'; img.src = url; }
+        if (msg) msg.textContent = `Cámara ${isEntrada ? 'entrada' : 'salida'} ENCENDIDA`;
+      }
+      document.getElementById('entradaOn').addEventListener('click', () => toggleCamera('http://192.168.18.122:81', 'on'));
+      document.getElementById('entradaOff').addEventListener('click', () => toggleCamera('http://192.168.18.122:81', 'off'));
+      document.getElementById('salidaOn').addEventListener('click', () => toggleCamera('http://192.168.18.123:81', 'on'));
+      document.getElementById('salidaOff').addEventListener('click', () => toggleCamera('http://192.168.18.123:81', 'off'));
+      function activeOrigin() {
+        const e = document.getElementById('camEntrada');
+        const s = document.getElementById('camSalida');
+        if (e && e.style.display !== 'none') return 'http://192.168.18.122:81';
+        if (s && s.style.display !== 'none') return 'http://192.168.18.123:81';
+        return '';
+      }
+      async function captureFaces() {
+        const msg = document.getElementById('aiMsg');
+        const e = document.getElementById('camEntrada');
+        const s = document.getElementById('camSalida');
+        if ((e && e.style.display === 'none') && (s && s.style.display === 'none')) { msg.textContent = 'Enciende una cámara para capturar.'; return; }
+        const overlay = document.getElementById('captureModal');
+        const pre = document.getElementById('preCount');
+        const active = document.getElementById('activeCount');
+        const modalMsg = document.getElementById('modalMsg');
+        const input = document.getElementById('captureName');
+        overlay.style.display = '';
+        pre.textContent = '';
+        active.textContent = '';
+        modalMsg.textContent = '';
+        input.value = '';
+        input.focus();
+      }
+      function selectedCaptureImage() {
+        const choice = (document.getElementById('captureSource').value || 'entrada');
+        const imgEntrada = document.getElementById('camEntrada');
+        const imgSalida = document.getElementById('camSalida');
+        const img = choice === 'entrada' ? imgEntrada : imgSalida;
+        if (!img || img.style.display === 'none') return null;
+        return img;
+      }
+      async function startCaptureFromModal() {
+        const msg = document.getElementById('aiMsg');
+        const origin = activeOrigin();
+        if (!origin) { msg.textContent = 'Enciende una cámara para capturar.'; hideModal(); return; }
+        const input = document.getElementById('captureName');
+        const nombre = (input.value || '').trim();
+        if (!nombre) { document.getElementById('modalMsg').textContent = 'Nombre requerido'; return; }
+        const totalFrames = 50;
+        showPreCountdown(async () => {
+          const img = selectedCaptureImage();
+          if (!img) { document.getElementById('modalMsg').textContent = 'Sin imagen de cámara'; return; }
+          const w = img.naturalWidth || img.width || 480;
+          const h = img.naturalHeight || img.height || 360;
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          let captured = 0;
+          document.getElementById('modalMsg').textContent = 'Capturando…';
+          const snap = async () => {
+            try {
+              ctx.drawImage(img, 0, 0, w, h);
+              const dataUrl = canvas.toDataURL('image/jpeg');
+              await fetch('/api/admin/save_frame', {
+                method: 'POST', headers: authHeadersJSON(),
+                body: JSON.stringify({ name: nombre, image_base64: dataUrl })
+              });
+              captured += 1;
+              const active = document.getElementById('activeCount');
+              active.textContent = `Fotos capturadas: ${captured}/${totalFrames}`;
+            } catch (_) {}
+          };
+          await snap();
+          const t = setInterval(async () => {
+            if (captured >= totalFrames) { clearInterval(t); const active = document.getElementById('activeCount'); active.textContent = 'Finalizado'; setTimeout(hideModal, 800); return; }
+            await snap();
+          }, 200);
+        });
+      }
+      function showPreCountdown(cb) {
+        const overlay = document.getElementById('captureModal');
+        const pre = document.getElementById('preCount');
+        const active = document.getElementById('activeCount');
+        const modalMsg = document.getElementById('modalMsg');
+        overlay.style.display = '';
+        active.textContent = '';
+        modalMsg.textContent = '';
+        let n = 3;
+        pre.textContent = String(n);
+        const t = setInterval(() => {
+          n -= 1;
+          if (n <= 0) { clearInterval(t); pre.textContent = ''; cb(); return; }
+          pre.textContent = String(n);
+        }, 1000);
+      }
+      function startActiveCountdown(total) {
+        const active = document.getElementById('activeCount');
+        let left = total;
+        active.textContent = `Tiempo restante: ${left}s`;
+        const t = setInterval(() => {
+          left -= 1;
+          if (left <= 0) { clearInterval(t); active.textContent = 'Finalizado'; setTimeout(hideModal, 800); return; }
+          active.textContent = `Tiempo restante: ${left}s`;
+        }, 1000);
+      }
+      function hideModal() {
+        const overlay = document.getElementById('captureModal');
+        const pre = document.getElementById('preCount');
+        const active = document.getElementById('activeCount');
+        const modalMsg = document.getElementById('modalMsg');
+        overlay.style.display = 'none';
+        pre.textContent = '';
+        active.textContent = '';
+        modalMsg.textContent = '';
+      }
+      async function buildModel() {
+        const overlay = document.getElementById('modelOverlay');
+        const bar = document.getElementById('modelProgressBar');
+        const txt = document.getElementById('modelProgressText');
+        overlay.style.display = '';
+        let p = 0;
+        txt.textContent = '0%';
+        bar.style.width = '0%';
+        let done = false;
+        const inc = setInterval(() => {
+          if (done) return;
+          p = Math.min(p + Math.floor(3 + Math.random() * 7), 95);
+          bar.style.width = p + '%';
+          txt.textContent = p + '%';
+        }, 300);
+        try {
+          const res = await fetch('/api/admin/model/build', { method: 'POST', headers: authHeadersJSON() });
+          done = true;
+          clearInterval(inc);
+          bar.style.width = '100%';
+          txt.textContent = '100%';
+          setTimeout(() => { overlay.style.display = 'none'; }, 700);
+          const msg = document.getElementById('aiMsg');
+          msg.textContent = res.ok ? 'Modelo generado' : 'Error al generar modelo';
+        } catch (e) {
+          done = true;
+          clearInterval(inc);
+          overlay.style.display = 'none';
+          const msg = document.getElementById('aiMsg');
+          msg.textContent = 'Error al generar modelo';
+        }
+      }
+      async function startRecognize() {
+        const msg = document.getElementById('aiMsg');
+        const origin = activeOrigin();
+        if (!origin) { msg.textContent = 'Enciende una cámara para reconocer.'; return; }
+        const entrada = document.getElementById('camEntrada');
+        const salida = document.getElementById('camSalida');
+        const target = (entrada && entrada.style.display !== 'none') ? entrada : ((salida && salida.style.display !== 'none') ? salida : null);
+        if (!target) { msg.textContent = 'No hay imagen activa'; return; }
+        const url = '/api/admin/recognize_stream?url=' + encodeURIComponent(origin + '/stream');
+        target.src = url;
+        msg.textContent = 'Reconocimiento iniciado';
+      }
+      async function stopRecognize() {
+        const msg = document.getElementById('aiMsg');
+        const origin = activeOrigin();
+        if (!origin) { msg.textContent = 'Enciende una cámara.'; return; }
+        const entrada = document.getElementById('camEntrada');
+        const salida = document.getElementById('camSalida');
+        const target = (entrada && entrada.style.display !== 'none') ? entrada : ((salida && salida.style.display !== 'none') ? salida : null);
+        if (!target) { msg.textContent = 'No hay imagen activa'; return; }
+        const url = '/api/admin/video_stream?url=' + encodeURIComponent(origin + '/stream');
+        target.src = url;
+        msg.textContent = 'Reconocimiento detenido';
+      }
+      document.getElementById('btnCapture').addEventListener('click', captureFaces);
+      document.getElementById('captureStartBtn').addEventListener('click', startCaptureFromModal);
+      document.getElementById('captureCancelBtn').addEventListener('click', hideModal);
+      document.getElementById('btnModel').addEventListener('click', buildModel);
+      document.getElementById('btnRecognize').addEventListener('click', startRecognize);
+      document.getElementById('btnRecognizeStop').addEventListener('click', stopRecognize);
     </script>
   </body>
 </html>

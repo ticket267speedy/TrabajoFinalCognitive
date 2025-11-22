@@ -1,16 +1,14 @@
-# requirements.txt
-
-# --- Core Flask ---
+# Core Flask
 flask
 python-dotenv
 flask-sqlalchemy
 flask-migrate
-PyMySQL
 
-# --- Utilidades y Seguridad ---
+# Database Drivers
+psycopg2-binary
+
+# Security & Utilities
 flask-cors
 flask-jwt-extended
 gunicorn
 passlib[bcrypt]
-
-# (Dependencias de IA removidas en esta versión)

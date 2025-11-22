@@ -707,38 +707,12 @@
 
       document.getElementById('checkSession').addEventListener('click', async () => {
         const courseId = document.getElementById('sessionCourseSelect').value;
-        if (!courseId) return;
-        await detectAdminApiPrefix();
-        // Intentar con prefijo actual y hacer fallback al alternativo si hiciera falta
-        const prefixes = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
-        let redirected = false;
-        let lastData = null;
-        let lastStatus = null;
-        for (const p of prefixes) {
-          try {
-            const res = await fetch(`${p}/courses/${courseId}/session/active`, { headers: authHeaders() });
-            const data = await parseResponse(res);
-            lastData = data; lastStatus = res.status;
-            if (res.status === 401 || res.status === 403 || res.status === 422) {
-              document.getElementById('sessionMsg').textContent = data.error || 'No autorizado: inicia sesión como administrador';
-              return;
-            }
-            if (res.ok && data.active && data.session && data.session.id) {
-              ADMIN_API_PREFIX = p; // fijar el prefijo válido
-              window.location.href = `/admin/course/${courseId}/session`;
-              redirected = true;
-              break;
-            }
-          } catch (e) { /* probar siguiente prefijo */ }
+        if (!courseId) {
+          document.getElementById('sessionMsg').textContent = 'Por favor selecciona un curso primero.';
+          return;
         }
-        if (!redirected) {
-          // Si hubo respuesta 200 pero sin sesión activa, mostrar mensaje claro
-          if (lastStatus === 200 && lastData && lastData.active === false) {
-            document.getElementById('sessionMsg').textContent = 'Sin sesión activa';
-          } else {
-            document.getElementById('sessionMsg').textContent = (lastData && lastData.error) || httpErrorMessage(lastStatus || 0, lastData || {}, '') || 'No se pudo verificar la sesión activa';
-          }
-        }
+        // Simplemente redirigir a la página de sesión activa
+        window.location.href = `/admin/course/${courseId}/session`;
       });
 
       document.getElementById('startSession').addEventListener('click', async () => {
@@ -933,6 +907,39 @@
         }
         document.getElementById('profileMsg').textContent = ok ? 'Perfil actualizado' : 'Error al guardar perfil';
         if (ok) loadProfile();
+      });
+
+      // ==================== SCROLL TO ANCHOR ====================
+      // Scroll a la sección correspondiente cuando se carga con hash
+      function scrollToHash() {
+        const hash = window.location.hash;
+        if (hash) {
+          const elementId = hash.substring(1); // Remover el '#'
+          const element = document.getElementById(elementId);
+          if (element) {
+            setTimeout(() => {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+          }
+        }
+      }
+
+      // Ejecutar al cargar
+      window.addEventListener('load', scrollToHash);
+
+      // Ejecutar si el hash cambia (back/forward buttons)
+      window.addEventListener('hashchange', scrollToHash);
+
+      // Agregar listeners a los links para mantener el hash al navegar
+      document.querySelectorAll('a[href^="#"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+          const href = this.getAttribute('href');
+          if (href !== '#' && href !== '#' && !href.includes('logoutLink')) {
+            e.preventDefault();
+            window.location.hash = href.substring(1);
+            scrollToHash();
+          }
+        });
       });
     </script>
   </body>

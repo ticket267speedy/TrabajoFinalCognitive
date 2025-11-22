@@ -1,7 +1,27 @@
 from flask import Blueprint, request, jsonify, current_app, Response, stream_with_context
-import requests
 import cv2
 import time
+import subprocess
+import threading
+import sys
+import os
+from datetime import datetime
+from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from ..extensions import db
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
+
+# Importaciones pesadas movidas a importación perezosa dentro de funciones
+from flask import Blueprint, request, jsonify, current_app, Response, stream_with_context
+import cv2
+import time
+import subprocess
+import threading
+import sys
+import os
+from datetime import datetime
 from werkzeug.security import generate_password_hash
 from werkzeug.security import check_password_hash
 from sqlalchemy import text
@@ -15,13 +35,90 @@ from ..models import Student, Alert
 from ..models import User, Course, Enrollment, ClassSession, AttendanceSummary, AdvisorCourseLink
 import os
 from werkzeug.utils import secure_filename
+import base64
+from app.services.face_recognition_service import generar_modelo
+from app.services.face_recognition_service import reconocer_en_frame, dibujar_resultados, cargar_modelo
+from app.services.chatbot_service import get_chatbot_response
 # Chatbot deshabilitado
 
 
 api_bp = Blueprint("api", __name__)
 
 
-# Endpoint de asistencia vía imagen removido: versión sin IA
+# Endpoint de asistencia vía imagen (IA)
+@api_bp.post("/admin/attendance/face")
+@jwt_required()
+def admin_attendance_face():
+    """Recibe una imagen, detecta rostros y marca asistencia si hay coincidencia."""
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    
+    if "image" not in request.files:
+        return jsonify({"error": "No se envió imagen"}), 400
+        
+    file = request.files["image"]
+    course_id = request.form.get("course_id")
+    
+    if not course_id:
+        return jsonify({"error": "course_id requerido"}), 400
+        
+    # Verificar sesión activa
+    active_session = ClassSession.query.filter_by(course_id=course_id, status="active").first()
+    if not active_session:
+        return jsonify({"error": "No hay sesión activa para este curso"}), 400
+        
+    # Cargar modelo
+    known_encodings, known_names = cargar_modelo()
+    if not known_encodings:
+        return jsonify({"error": "Modelo de IA no cargado o vacío"}), 500
+        
+    # Leer imagen
+    npimg = np.fromfile(file, np.uint8)
+    frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+    
+    if frame is None:
+        return jsonify({"error": "Imagen inválida"}), 400
+        
+    # Reconocer
+    locs, names = reconocer_en_frame(frame, known_encodings, known_names, tolerance=0.5)
+    
+    results = []
+    from ..services.attendance_service import mark_attendance
+    
+    for name in names:
+        if name == "Desconocido":
+            continue
+            
+        # Buscar estudiante por nombre (asumiendo formato "Nombre Apellido" o similar en carpetas)
+        # Esto es una simplificación. Idealmente el nombre de carpeta debería ser el ID o mapeable.
+        # Intentaremos buscar por concatenación de nombres
+        
+        # Estrategia: Buscar estudiante que coincida con el nombre detectado
+        # Asumimos que 'name' viene de la carpeta, ej: "Juan Perez"
+        
+        # Opción A: Buscar exacto en base de datos (concatenando first_name + last_name)
+        # Opción B: El nombre de la carpeta ES el ID del estudiante (más robusto)
+        # Vamos a intentar buscar por ID si el nombre es un número, sino por texto
+        
+        student = None
+        if name.isdigit():
+             student = Student.query.get(int(name))
+        else:
+            # Búsqueda aproximada o exacta
+            parts = name.split()
+            if len(parts) >= 1:
+                fname = parts[0]
+                lname = " ".join(parts[1:]) if len(parts) > 1 else ""
+                student = Student.query.filter(Student.first_name.ilike(f"%{fname}%")).first() # Simplificado
+        
+        if student:
+            res = mark_attendance(session_id=active_session.id, student_id=str(student.id), course_id=int(course_id))
+            results.append({"name": name, "student_id": student.id, "status": res})
+        else:
+            results.append({"name": name, "error": "Estudiante no encontrado en BD"})
+            
+    return jsonify({"results": results}), 200
+
 
 
 @api_bp.post("/becarios/register")
@@ -362,7 +459,18 @@ def user_public_profile(user_id: int):
     }), 200
 
 
-# --- Chatbot removido ---
+# --- Chatbot ---
+@api_bp.post("/chatbot")
+def chatbot_endpoint():
+    """Endpoint para el chatbot."""
+    data = request.get_json(silent=True) or {}
+    message = data.get("message", "")
+    if not message:
+        return jsonify({"response": "¿En qué puedo ayudarte?"}), 200
+        
+    response = get_chatbot_response(message)
+    return jsonify({"response": response}), 200
+
 
 
 # --- Personas por curso ---
@@ -685,7 +793,7 @@ def admin_session_start(course_id: int):
     active = ClassSession.query.filter_by(course_id=course_id, status="active").first()
     if active:
         return jsonify({"error": "Ya existe una sesión activa", "session_id": active.id}), 400
-    # Usar timestamp desde Python para evitar funciones SQL no soportadas por SQLite (now())
+    # Create new session with current timestamp
     from datetime import datetime
     sess = ClassSession(course_id=course_id, status="active", start_time=datetime.utcnow())
     db.session.add(sess)
@@ -705,7 +813,7 @@ def admin_session_end(course_id: int):
     active = ClassSession.query.filter_by(course_id=course_id, status="active").first()
     if not active:
         return jsonify({"error": "No hay sesión activa"}), 400
-    # Usar timestamp desde Python para evitar funciones SQL no soportadas por SQLite (now())
+    # End session with current timestamp
     from datetime import datetime
     active.end_time = datetime.utcnow()
     active.status = "finished"
@@ -1020,20 +1128,254 @@ def video_stream():
                 pass
     return Response(stream_with_context(gen()), content_type="multipart/x-mixed-replace; boundary=frame")
 
-@api_bp.get("/admin/camera/flash")
+FACE_PROC = None
+KNOWN_ENCODINGS, KNOWN_NAMES = cargar_modelo()
+
+@api_bp.post("/admin/face/run")
+def face_run():
+    global FACE_PROC
+    data = request.get_json(silent=True) or {}
+    action = (data.get("action") or "").strip()
+    name = (data.get("name") or "").strip()
+    source = (data.get("source") or "").strip()
+    ia_path = r"c:\\Cloud Computing\\PRUEBA IA\\IA_cortas_distancias.py"
+    if not os.path.isfile(ia_path):
+        return jsonify({"error": "IA no disponible"}), 404
+    if FACE_PROC and FACE_PROC.poll() is None:
+        return jsonify({"error": "Proceso en ejecución"}), 409
+    def run_capture():
+        p = subprocess.Popen(
+            [sys.executable, ia_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=os.path.dirname(ia_path)
+        )
+        p.stdin.write("1\n")
+        p.stdin.write(f"{source}\n")
+        p.stdin.write(f"{name}\n")
+        p.stdin.flush()
+        return p
+    def run_model():
+        p = subprocess.Popen(
+            [sys.executable, ia_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=os.path.dirname(ia_path)
+        )
+        p.stdin.write("2\n")
+        p.stdin.flush()
+        return p
+    def run_recognize():
+        p = subprocess.Popen(
+            [sys.executable, ia_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=os.path.dirname(ia_path)
+        )
+        p.stdin.write("3\n")
+        p.stdin.write(f"{source}\n")
+        p.stdin.flush()
+        return p
+    try:
+        if action == "capture":
+            FACE_PROC = run_capture()
+        elif action == "model":
+            FACE_PROC = run_model()
+        elif action == "recognize":
+            FACE_PROC = run_recognize()
+        else:
+            return jsonify({"error": "Acción inválida"}), 400
+    except Exception:
+        FACE_PROC = None
+        return jsonify({"error": "Fallo al iniciar IA"}), 500
+    def drain(proc):
+        try:
+            proc.communicate()
+        except Exception:
+            pass
+    threading.Thread(target=drain, args=(FACE_PROC,), daemon=True).start()
+    return jsonify({"ok": True}), 202
+
+@api_bp.post("/admin/model/build")
 @jwt_required()
-def admin_camera_flash():
+def admin_model_build():
     if not _require_role("admin"):
         return jsonify({"error": "No autorizado"}), 401
-    target = (request.args.get("target") or "").strip()
-    if not target:
-        return jsonify({"error": "target requerido"}), 400
-    if not (target.lower().startswith("http://") or target.lower().startswith("https://")):
-        return jsonify({"error": "URL inválida"}), 400
-    try:
-        r = requests.get(target, timeout=3, allow_redirects=True)
-        if r.status_code >= 400:
-            return jsonify({"ok": False, "status": r.status_code}), 502
-    except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 502
+    ok = generar_modelo()
+    if ok:
+        return jsonify({"ok": True}), 200
+    return jsonify({"error": "No se pudo generar modelo"}), 500
+
+@api_bp.get("/admin/recognize_stream")
+def recognize_stream():
+    camera_url = request.args.get('url', '').strip()
+    if not camera_url:
+        return jsonify({"error": "url requerida"}), 400
+    def gen():
+        cap = cv2.VideoCapture(camera_url)
+        process_every = 3
+        i = 0
+        last_locs, last_names = [], []
+        try:
+            while True:
+                if not cap.isOpened():
+                    cap.release()
+                    cap = cv2.VideoCapture(camera_url)
+                    time.sleep(0.5)
+                    continue
+                ok, frame = cap.read()
+                if not ok:
+                    time.sleep(0.05)
+                    continue
+                i += 1
+                if i % process_every == 0:
+                    locs, names = reconocer_en_frame(frame, KNOWN_ENCODINGS or [], KNOWN_NAMES or [], tolerance=0.5)
+                    last_locs, last_names = locs, names
+                frame2 = dibujar_resultados(frame, last_locs, last_names)
+                ok2, buf = cv2.imencode('.jpg', frame2)
+                if not ok2:
+                    continue
+                yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n"
+        finally:
+            try:
+                cap.release()
+            except Exception:
+                pass
+    resp = Response(stream_with_context(gen()), content_type="multipart/x-mixed-replace; boundary=frame")
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+@api_bp.post("/admin/face/stop")
+def face_stop():
+    global FACE_PROC
+    if FACE_PROC and FACE_PROC.poll() is None:
+        try:
+            FACE_PROC.terminate()
+        except Exception:
+            pass
+    FACE_PROC = None
     return jsonify({"ok": True}), 200
+
+@api_bp.post("/admin/face/capture")
+def face_capture():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    source = (data.get("source") or "").strip()
+    duration = int(data.get("duration") or 12)
+    max_count = int(data.get("max_count") or 50)
+    if not name or not source:
+        return jsonify({"error": "name y source requeridos"}), 400
+    dest_root = r"c:\\Cloud Computing\\PROYECTO_FINAL\\TrabajoFinalCognitive\\fotos_conocidas"
+    try:
+        safe = secure_filename(name)
+    except Exception:
+        safe = name.replace(" ", "_")
+    dest_dir = os.path.join(dest_root, safe)
+    try:
+        os.makedirs(dest_dir, exist_ok=True)
+    except Exception:
+        return jsonify({"error": "No se pudo crear carpeta"}), 500
+    def run():
+        def abrir_fuente(src):
+            s = str(src).strip()
+            if s.isdigit():
+                try:
+                    return cv2.VideoCapture(int(s), cv2.CAP_DSHOW)
+                except Exception:
+                    return cv2.VideoCapture(int(s))
+            if s.startswith("rtsp://") or s.startswith("http://") or s.startswith("https://"):
+                cap0 = cv2.VideoCapture(s)
+                if not cap0.isOpened():
+                    try:
+                        cap0.release()
+                    except Exception:
+                        pass
+                    cap0 = cv2.VideoCapture(s, cv2.CAP_FFMPEG)
+                return cap0
+            try:
+                return cv2.VideoCapture(int(s), cv2.CAP_DSHOW)
+            except Exception:
+                return cv2.VideoCapture(s)
+
+        cap = abrir_fuente(source)
+        try:
+            cascade = cv2.CascadeClassifier(os.path.join(cv2.data.haarcascades, 'haarcascade_frontalface_default.xml'))
+        except Exception:
+            cascade = None
+        end_t = time.time() + duration
+        saved = 0
+        while time.time() < end_t and saved < max_count:
+            ok, frame = cap.read()
+            if not ok:
+                time.sleep(0.05)
+                continue
+            faces = []
+            if cascade is not None:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80))
+            if not faces:
+                h, w = frame.shape[:2]
+                cx, cy = w//2, h//2
+                size = min(w, h)//3
+                x = max(cx - size//2, 0)
+                y = max(cy - size//2, 0)
+                faces = [(x, y, size, size)]
+            for (x, y, w, h) in faces:
+                roi = frame[y:y+h, x:x+w]
+                try:
+                    roi = cv2.resize(roi, (150, 150), interpolation=cv2.INTER_CUBIC)
+                except Exception:
+                    pass
+                fn = datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '.jpg'
+                p = os.path.join(dest_dir, fn)
+                try:
+                    cv2.imwrite(p, roi)
+                    saved += 1
+                except Exception:
+                    pass
+                if saved >= max_count:
+                    break
+        try:
+            cap.release()
+        except Exception:
+            pass
+    threading.Thread(target=run, daemon=True).start()
+    return jsonify({"ok": True, "dir": dest_dir}), 202
+@api_bp.post("/admin/save_frame")
+@jwt_required()
+def handle_save_frame():
+    if not _require_role("admin"):
+        return jsonify({"msg": "Acceso denegado"}), 403
+    data = request.get_json(silent=True) or {}
+    person_name = (data.get('name') or '').strip()
+    image_b64 = data.get('image_base64') or ''
+    if not person_name or not image_b64:
+        return jsonify({"msg": "Faltan 'name' o 'image_base64'"}), 400
+    try:
+        payload = image_b64.split(',', 1)[-1]
+        raw = base64.b64decode(payload)
+    except Exception:
+        return jsonify({"msg": "Base64 inválido"}), 400
+    try:
+        dest_root = r"c:\\Cloud Computing\\PROYECTO_FINAL\\TrabajoFinalCognitive\\fotos_conocidas"
+        try:
+            safe = secure_filename(person_name)
+        except Exception:
+            safe = person_name.replace(" ", "_")
+        dest_dir = os.path.join(dest_root, safe)
+        os.makedirs(dest_dir, exist_ok=True)
+        existing = [f for f in os.listdir(dest_dir) if f.lower().endswith('.jpg')]
+        idx = len(existing)
+        fname = f"rostro_{idx}.jpg"
+        path = os.path.join(dest_dir, fname)
+        with open(path, 'wb') as f:
+            f.write(raw)
+        return jsonify({"msg": "Imagen guardada", "path": path}), 200
+    except Exception as e:
+        return jsonify({"msg": f"Error al guardar: {str(e)}"}), 500
