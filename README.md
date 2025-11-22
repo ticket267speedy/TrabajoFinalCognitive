@@ -137,3 +137,131 @@ La app escucha en `http://localhost:5000/`.
 
 ## Licencia
 Proyecto académico/educativo. No se provee licencia explícita.
+
+---
+
+## Migración a SB Admin 2 Bootstrap 4 (Reciente)
+
+A partir de la versión actual, el dashboard del administrador ha sido refactorizado para utilizar el tema profesional **SB Admin 2** basado en Bootstrap 4. Esta migración mejora significativamente la apariencia visual y la experiencia de usuario.
+
+### Cambios Principales
+
+#### 1. **Nueva Estructura de Plantillas (Templates)**
+- **`app/templates/layout.html`** — Plantilla base reutilizable que incluye:
+  - Sidebar con navegación principal (Dashboard, Estudiantes, Cursos, Sesiones, Asistencia, Asesores)
+  - Topbar responsive con información del usuario y dropdown
+  - Footer con copyright
+  - Scripts de Bootstrap 4 y jQuery
+  - Bloques `{% block content %}` y `{% block extra_js %}` para extensión
+
+- **`app/views/admin/admin_dashboard.html`** — Refactorizado para:
+  - Extender `layout.html` con `{% extends "layout.html" %}`
+  - Insertar el contenido dentro de `{% block content %}`
+  - Mantener toda la lógica JavaScript y funcionalidad anterior intacta
+  - Utilizar cards de Bootstrap 4 (`.card`, `.card-header`, `.card-body`) para secciones
+
+#### 2. **Assets de SB Admin 2**
+Se han copiado al proyecto los siguientes recursos de `startbootstrap-sb-admin-2-gh-pages`:
+- `app/static/vendor/` — jQuery, Bootstrap 4, Font Awesome, Chart.js, DataTables, jQuery Easing
+- `app/static/css/sb-admin-2.min.css` — Estilos del tema (170 KB)
+- `app/static/js/sb-admin-2.min.js` — Scripts del tema
+- `app/static/img/` — Iconografía SVG (perfiles, ilustraciones)
+
+#### 3. **Preservación de Funcionalidad**
+Todos los IDs, nombres de campos, listeners de eventos y lógica JavaScript del dashboard anterior se han conservado:
+- Gestión de estudiantes (CRUD con paginación)
+- Gestión de cursos (listado)
+- Control de sesiones de clase (iniciar, finalizar, ver activa)
+- Resumen de asistencia
+- Invitación de asesores
+- Modales de Bootstrap 5 para agregar/editar estudiantes
+- Detección automática de prefijo API (`/api/admin` vs `/admin/api`)
+- Autenticación JWT y redirección a login
+
+#### 4. **Sistema de Rutas (url_for)**
+Todas las rutas usan `url_for()` de Flask para mayor robustez:
+- `{{ url_for('admin_bp.admin_dashboard_view') }}` → `/admin/`
+- `{{ url_for('admin_bp.admin_profile_view') }}` → `/admin/profile`
+- `{{ url_for('static', filename='...') }}` → Assets en `/static/`
+
+#### 5. **Estructura HTML Mejorada**
+El contenido del dashboard ahora se presenta en cards de Bootstrap 4:
+```html
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-users"></i> Estudiantes
+        </h6>
+    </div>
+    <div class="card-body">
+        <!-- Contenido de la sección -->
+    </div>
+</div>
+```
+
+### Archivos Modificados
+
+| Archivo | Cambio |
+|---------|--------|
+| `app/templates/layout.html` | ✨ Nuevo (base template con estructura de SB Admin 2) |
+| `app/views/admin/admin_dashboard.html` | ♻️ Refactorizado (ahora extiende `layout.html`) |
+| `app/static/` | ➕ Assets de SB Admin 2 (vendor, css, js, img) |
+
+### Archivos Sin Cambios
+
+- `app/controllers/admin_controller.py` — Rutas y lógica backend intactas
+- `app/controllers/api.py` — Endpoints de API sin modificar
+- `app/models/`, `app/services/`, `app/repositories/` — Datos y lógica de negocio sin cambios
+- Todas las funcionalidades REST y de autenticación se mantienen
+
+### Cómo Usar la Nueva Estructura
+
+#### Para extender el dashboard con nuevas páginas admin:
+
+1. Crea una nueva plantilla en `app/views/admin/`:
+```html
+{% extends "layout.html" %}
+
+{% block title %}Mi Nueva Página - CogniPass{% endblock %}
+
+{% block content %}
+<h1>Contenido de mi página</h1>
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Mi Sección</h6>
+    </div>
+    <div class="card-body">
+        <!-- Tu contenido aquí -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Tu lógica JavaScript aquí
+</script>
+{% endblock %}
+```
+
+2. Declara la ruta en `app/controllers/admin_controller.py`:
+```python
+@admin_bp.get("/mi-pagina")
+def mi_nueva_pagina():
+    return render_template("admin/mi_nueva_pagina.html")
+```
+
+#### Para personalizar la sidebar:
+
+Edita `app/templates/layout.html` en la sección de navegación (busca `<!-- Nav Item - ...`).
+
+### Ventajas de la Migración
+
+✅ Interfaz visual moderna y profesional  
+✅ Sistema responsive (móvil, tablet, desktop)  
+✅ Componentes Bootstrap 4 reutilizables  
+✅ Menú sidebar colapsible para optimizar espacio  
+✅ Topbar integrada con información del usuario  
+✅ Mantenimiento de toda la funcionalidad anterior  
+✅ Facilita agregar nuevas páginas admin en el futuro  
+
+---
