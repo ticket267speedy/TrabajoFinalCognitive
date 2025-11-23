@@ -26,6 +26,7 @@
                         <th>Nombre</th>
                         <th>Email</th>
                         <th>Tipo</th>
+                        <th>Cursos</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -207,6 +208,11 @@
                 <td><span class="badge badge-${s.is_scholarship_student ? 'success' : 'secondary'}">
                     ${s.is_scholarship_student ? 'Becario' : 'Regular'}
                 </span></td>
+                <td>
+                    ${s.courses && s.courses.length > 0 
+                        ? s.courses.map(c => `<span class="badge badge-info">${c}</span>`).join(' ')
+                        : '<span class="text-muted">-</span>'}
+                </td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary edit-student-btn" data-id="${s.id}">Editar</button>
                     <button class="btn btn-sm btn-outline-danger delete-student-btn" data-id="${s.id}">Eliminar</button>

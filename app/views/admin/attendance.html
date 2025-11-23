@@ -6,28 +6,7 @@
 
 <!-- Page Heading -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Resumen de Asistencia</h1>
-</div>
-
-<!-- Filtros Card -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
-    </div>
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Sesión ID (Opcional)</label>
-                <input id="filterSessionId" type="text" class="form-control" placeholder="Dejar vacío para ver todas" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">&nbsp;</label>
-                <button id="loadAttendanceBtn" class="btn btn-primary w-100">
-                    <i class="fas fa-search"></i> Cargar
-                </button>
-            </div>
-        </div>
-    </div>
+    <h1 class="h3 mb-0 text-gray-800">Asistencia</h1>
 </div>
 
 <!-- Asistencia Card -->
@@ -42,14 +21,16 @@
                     <tr>
                         <th>ID</th>
                         <th>Estudiante</th>
-                        <th>Sesión</th>
-                        <th>Porcentaje</th>
-                        <th>Manual</th>
+                        <th>Curso</th>
+                        <th>Fecha</th>
+                        <th>Entrada</th>
+                        <th>Salida</th>
+                        <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="attendanceTableBody">
-                    <tr><td colspan="6" class="text-center text-muted py-3">Cargando...</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-3">Cargando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -73,14 +54,21 @@
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">Porcentaje de Asistencia (0-100)</label>
-                    <input id="editAttendancePercentage" type="number" class="form-control" min="0" max="100" />
+                    <label class="form-label">Estado</label>
+                    <select id="editAttendanceStatus" class="form-select">
+                        <option value="presente">Presente</option>
+                        <option value="tardanza">Tardanza</option>
+                        <option value="falta">Falta</option>
+                        <option value="salida_repentina">Salida Repentina</option>
+                    </select>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="editAttendanceManual" />
-                    <label class="form-check-label" for="editAttendanceManual">
-                        Marcar como manual override
-                    </label>
+                <div class="mb-3">
+                    <label class="form-label">Hora de Entrada</label>
+                    <input id="editAttendanceEntry" type="time" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hora de Salida</label>
+                    <input id="editAttendanceExit" type="time" class="form-control" />
                 </div>
                 <div id="editAttendanceMsg" class="alert alert-info mt-3" style="display:none;"></div>
             </div>
@@ -98,7 +86,8 @@
 <script>
     const token = localStorage.getItem('access_token');
     let ADMIN_API_PREFIX = '/api/admin';
-    let attendanceState = { items: [], page: 1, pageSize: 5 };
+    let attendanceState = { items: [], page: 1, pageSize: 10 };
+    let currentEditAttendanceId = null;
 
     function authHeaders() {
         const h = { 'Content-Type': 'application/json' };
@@ -122,26 +111,19 @@
 
     async function loadAttendance() {
         if (!token) {
-            document.getElementById('attendanceTableBody').innerHTML = `<tr><td colspan="6" class="text-center text-danger">Por favor inicia sesión</td></tr>`;
+            document.getElementById('attendanceTableBody').innerHTML = `<tr><td colspan="8" class="text-center text-danger">Por favor inicia sesión</td></tr>`;
             return;
-        }
-
-        const sessionId = document.getElementById('filterSessionId').value.trim();
-        let url = `${ADMIN_API_PREFIX}/attendance-summaries`;
-        if (sessionId) {
-            url += `?session_id=${sessionId}`;
         }
 
         const prefixes = ['/api/admin', '/admin/api'];
 
         for (const p of prefixes) {
             try {
-                const queryUrl = url.replace(ADMIN_API_PREFIX, p);
-                const res = await fetch(queryUrl, { headers: authHeaders() });
+                const res = await fetch(`${p}/attendance`, { headers: authHeaders() });
                 const data = await res.json().catch(() => ({}));
 
                 if (res.ok) {
-                    const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
+                    const items = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
                     ADMIN_API_PREFIX = p;
                     attendanceState.items = items;
                     attendanceState.page = 1;
@@ -151,7 +133,7 @@
                 }
             } catch (e) { }
         }
-        document.getElementById('attendanceTableBody').innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error al cargar asistencia</td></tr>`;
+        document.getElementById('attendanceTableBody').innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error al cargar asistencia</td></tr>`;
     }
 
     function renderAttendanceTable() {
@@ -161,17 +143,28 @@
         const pageItems = attendanceState.items.slice(start, end);
 
         if (pageItems.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No hay registros</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No hay registros</td></tr>`;
             return;
         }
 
         tbody.innerHTML = pageItems.map(a => `
             <tr>
                 <td>${a.id}</td>
-                <td>Est. #${a.student_id}</td>
-                <td>Ses. #${a.session_id}</td>
-                <td>${a.presence_percentage || a.attendance_rate ? Math.round((a.presence_percentage || a.attendance_rate) * 100) + '%' : '-'}</td>
-                <td><span class="badge badge-${a.is_manual_override ? 'warning' : 'secondary'}">${a.is_manual_override ? 'Sí' : 'No'}</span></td>
+                <td>${a.student_name || 'Unknown'}</td>
+                <td>${a.course_name || 'Unknown'}</td>
+                <td>${a.date || '-'}</td>
+                <td>${a.entry_time || '-'}</td>
+                <td>${a.exit_time || '-'}</td>
+                <td>
+                    <span class="badge badge-${
+                        a.status === 'presente' ? 'success' :
+                        a.status === 'tardanza' ? 'warning' :
+                        a.status === 'falta' ? 'danger' :
+                        a.status === 'salida_repentina' ? 'info' : 'secondary'
+                    }">
+                        ${a.status || 'Unknown'}
+                    </span>
+                </td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary edit-attendance-btn" data-id="${a.id}">Editar</button>
                 </td>
@@ -225,8 +218,6 @@
         });
     }
 
-    document.getElementById('loadAttendanceBtn').addEventListener('click', loadAttendance);
-
     document.getElementById('attendanceTableBody').addEventListener('click', async (e) => {
         const editBtn = e.target.closest('.edit-attendance-btn');
         if (!editBtn) return;
@@ -235,34 +226,36 @@
         const attendance = attendanceState.items.find(a => a.id == id);
         if (!attendance) return;
 
-        document.getElementById('editAttendancePercentage').value = attendance.presence_percentage || attendance.attendance_rate || 0;
-        document.getElementById('editAttendanceManual').checked = attendance.is_manual_override || false;
+        document.getElementById('editAttendanceStatus').value = attendance.status || 'presente';
+        document.getElementById('editAttendanceEntry').value = attendance.entry_time || '';
+        document.getElementById('editAttendanceExit').value = attendance.exit_time || '';
         document.getElementById('editAttendanceMsg').style.display = 'none';
-        window.currentEditAttendanceId = id;
+        currentEditAttendanceId = id;
 
         const modal = new bootstrap.Modal(document.getElementById('editAttendanceModal'));
         modal.show();
     });
 
     document.getElementById('editAttendanceSubmit').addEventListener('click', async () => {
-        const id = window.currentEditAttendanceId;
-        const percentage = parseInt(document.getElementById('editAttendancePercentage').value, 10);
-        const manual = document.getElementById('editAttendanceManual').checked;
-
-        if (isNaN(percentage) || percentage < 0 || percentage > 100) {
-            showMsg('El porcentaje debe estar entre 0 y 100', 'danger');
-            return;
-        }
+        const id = currentEditAttendanceId;
+        const status = document.getElementById('editAttendanceStatus').value;
+        const entry = document.getElementById('editAttendanceEntry').value;
+        const exit = document.getElementById('editAttendanceExit').value;
 
         const payload = {
-            presence_percentage: percentage / 100,
-            is_manual_override: manual
+            status: status,
+            entry_time: entry || null,
+            exit_time: exit || null
         };
 
         const prefixes = ['/api/admin', '/admin/api'];
         for (const p of prefixes) {
             try {
-                const res = await fetch(`${p}/attendance-summaries/${id}`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify(payload) });
+                const res = await fetch(`${p}/attendance/${id}`, { 
+                    method: 'PATCH', 
+                    headers: authHeaders(), 
+                    body: JSON.stringify(payload) 
+                });
                 const data = await res.json().catch(() => ({}));
                 if (res.ok) {
                     ADMIN_API_PREFIX = p;
@@ -277,14 +270,6 @@
             } catch (e) { }
         }
     });
-
-    function showMsg(text, type) {
-        const msgEl = document.createElement('div');
-        msgEl.className = `alert alert-${type}`;
-        msgEl.textContent = text;
-        document.body.prepend(msgEl);
-        setTimeout(() => msgEl.remove(), 3000);
-    }
 
     function showMsgModal(text, type) {
         const msgEl = document.getElementById('editAttendanceMsg');

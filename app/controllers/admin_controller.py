@@ -231,13 +231,18 @@ def get_students():
         students_data = []
         
         for student in students:
+            # Obtener cursos en los que está matriculado
+            enrollments = Enrollment.query.filter_by(student_id=student.id).all()
+            course_names = [Course.query.get(e.course_id).name for e in enrollments if Course.query.get(e.course_id)]
+            
             students_data.append({
                 "id": student.id,
                 "first_name": student.first_name,
                 "last_name": student.last_name,
                 "email": student.email,
                 "is_scholarship_student": student.is_scholarship_student,
-                "profile_photo_url": student.profile_photo_url
+                "profile_photo_url": student.profile_photo_url,
+                "courses": course_names
             })
         
         return jsonify({"data": students_data})
@@ -396,6 +401,151 @@ def get_admin_attendance():
         
         return jsonify({"data": attendance_data})
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@admin_api_bp.get("/admin/courses/<int:course_id>/students")
+@jwt_required()
+def get_course_students(course_id: int):
+    """Obtener estudiantes matriculados en un curso específico"""
+    try:
+        user_id = get_jwt_identity()
+        try:
+            user_id_int = int(user_id)
+        except Exception:
+            user_id_int = user_id
+        user = User.query.get(user_id_int)
+        if not user:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+            
+        role_value = user.role if not hasattr(user.role, 'value') else user.role.value
+        if role_value != 'admin':
+            return jsonify({"error": "No autorizado"}), 403
+        
+        # Verificar que el curso pertenece al admin
+        course = Course.query.get(course_id)
+        if not course or course.admin_id != user.id:
+            return jsonify({"error": "Curso no encontrado o no autorizado"}), 404
+        
+        # Obtener estudiantes matriculados
+        enrollments = Enrollment.query.filter_by(course_id=course_id).all()
+        students_data = []
+        
+        for enrollment in enrollments:
+            student = Student.query.get(enrollment.student_id)
+            if student:
+                students_data.append({
+                    "id": student.id,
+                    "first_name": student.first_name,
+                    "last_name": student.last_name,
+                    "email": student.email,
+                    "is_scholarship_student": student.is_scholarship_student
+                })
+        
+        return jsonify({"data": students_data})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@admin_api_bp.get("/admin/courses/<int:course_id>/attendance")
+@jwt_required()
+def get_course_attendance(course_id: int):
+    """Obtener asistencia de un curso específico"""
+    try:
+        user_id = get_jwt_identity()
+        try:
+            user_id_int = int(user_id)
+        except Exception:
+            user_id_int = user_id
+        user = User.query.get(user_id_int)
+        if not user:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+            
+        role_value = user.role if not hasattr(user.role, 'value') else user.role.value
+        if role_value != 'admin':
+            return jsonify({"error": "No autorizado"}), 403
+        
+        # Verificar que el curso pertenece al admin
+        course = Course.query.get(course_id)
+        if not course or course.admin_id != user.id:
+            return jsonify({"error": "Curso no encontrado o no autorizado"}), 404
+        
+        # Obtener registros de asistencia del curso (hoy)
+        from datetime import date
+        today = date.today()
+        attendance_records = Attendance.query.filter_by(course_id=course_id).filter(
+            Attendance.date == today
+        ).all()
+        
+        attendance_data = []
+        for record in attendance_records:
+            try:
+                student = Student.query.get(record.student_id)
+                attendance_data.append({
+                    "id": record.id,
+                    "student_id": record.student_id,
+                    "student_name": f"{student.first_name} {student.last_name}" if student else "Unknown",
+                    "entry_time": str(record.entry_time) if record.entry_time else None,
+                    "exit_time": str(record.exit_time) if record.exit_time else None,
+                    "status": record.status,
+                    "date": record.date.isoformat()
+                })
+            except Exception as att_error:
+                print(f"Error procesando asistencia {record.id}: {att_error}")
+                continue
+        
+        return jsonify({"data": attendance_data})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@admin_api_bp.patch("/admin/attendance/<int:attendance_id>")
+@jwt_required()
+def update_attendance(attendance_id: int):
+    """Actualizar estado de asistencia"""
+    try:
+        user_id = get_jwt_identity()
+        try:
+            user_id_int = int(user_id)
+        except Exception:
+            user_id_int = user_id
+        user = User.query.get(user_id_int)
+        if not user:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+            
+        role_value = user.role if not hasattr(user.role, 'value') else user.role.value
+        if role_value != 'admin':
+            return jsonify({"error": "No autorizado"}), 403
+        
+        attendance = Attendance.query.get(attendance_id)
+        if not attendance:
+            return jsonify({"error": "Registro de asistencia no encontrado"}), 404
+        
+        # Verificar que el curso pertenece al admin
+        course = Course.query.get(attendance.course_id)
+        if not course or course.admin_id != user.id:
+            return jsonify({"error": "No autorizado"}), 403
+        
+        data = request.get_json()
+        if 'status' in data:
+            valid_statuses = ['presente', 'tardanza', 'falta', 'salida_repentina']
+            if data.get('status') not in valid_statuses:
+                return jsonify({"error": f"Status debe ser uno de: {','.join(valid_statuses)}"}), 400
+            attendance.status = data.get('status')
+        
+        if 'entry_time' in data:
+            attendance.entry_time = data.get('entry_time')
+        
+        if 'exit_time' in data:
+            attendance.exit_time = data.get('exit_time')
+        
+        db.session.commit()
+        return jsonify({"message": "Asistencia actualizada"}), 200
+    except Exception as e:
+        db.session.rollback()
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
