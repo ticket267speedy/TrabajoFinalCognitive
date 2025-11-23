@@ -56,37 +56,30 @@
 
             <!-- Nav Item - Estudiantes -->
             <li class="nav-item">
-                <a class="nav-link" href="#students">
+                <a class="nav-link" href="/admin/students">
                     <i class="fas fa-fw fa-users"></i>
                     <span>Estudiantes</span></a>
             </li>
 
             <!-- Nav Item - Cursos -->
             <li class="nav-item">
-                <a class="nav-link" href="#courses">
+                <a class="nav-link" href="/admin/courses">
                     <i class="fas fa-fw fa-book"></i>
                     <span>Cursos</span></a>
             </li>
 
             <!-- Nav Item - Sesiones de clase -->
             <li class="nav-item">
-                <a class="nav-link" href="#class-session">
+                <a class="nav-link" href="/admin/class-session">
                     <i class="fas fa-fw fa-video"></i>
                     <span>Sesiones de clase</span></a>
             </li>
 
             <!-- Nav Item - Asistencia -->
             <li class="nav-item">
-                <a class="nav-link" href="#attendance-summary">
+                <a class="nav-link" href="/admin/attendance">
                     <i class="fas fa-fw fa-clipboard-list"></i>
                     <span>Asistencia</span></a>
-            </li>
-
-            <!-- Nav Item - Asesores -->
-            <li class="nav-item">
-                <a class="nav-link" href="#invite-advisor">
-                    <i class="fas fa-fw fa-user-tie"></i>
-                    <span>Invitar Asesores</span></a>
             </li>
 
             <!-- Divider -->
@@ -97,10 +90,10 @@
                 Cuenta
             </div>
 
-            <!-- Nav Item - Perfil -->
+            <!-- Nav Item - Configuración -->
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('admin.admin_profile_view') }}">
-                    <i class="fas fa-fw fa-user"></i>
+                    <i class="fas fa-fw fa-cogs"></i>
                     <span>Configuración</span></a>
             </li>
 

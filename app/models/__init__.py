@@ -2,8 +2,6 @@ from .user import User
 from .student import Student
 from .course import Course
 from .enrollment import Enrollment
-from .class_session import ClassSession
-from .attendance_log import AttendanceLog
-from .attendance_summary import AttendanceSummary
+from .attendance import Attendance
 from .alert import Alert
 from .advisor_course_link import AdvisorCourseLink

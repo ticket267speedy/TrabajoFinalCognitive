@@ -45,9 +45,15 @@
 
           <div class="row g-3 mt-1">
             <div class="col-md-8">
-              <label class="form-label">Descripción</label>
-              <textarea id="profileDescription" class="form-control" rows="4" maxlength="1000" placeholder="Tu descripción..."></textarea>
-              <small class="text-muted d-block mt-1"><span id="charCount">0</span>/1000 caracteres</small>
+              <label class="form-label">Nombre Completo</label>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <input id="profileFirstName" class="form-control" placeholder="Nombre" />
+                </div>
+                <div class="col-md-6">
+                  <input id="profileLastName" class="form-control" placeholder="Apellido" />
+                </div>
+              </div>
               <div class="mt-2 d-flex align-items-center gap-2">
                 <button id="saveProfile" class="btn btn-primary">Guardar</button>
                 <span id="profileMsg" class="text-muted"></span>
@@ -84,14 +90,8 @@
         window.location.href = '/login';
       });
 
-      function updateCharCount() {
-        const textarea = document.getElementById('profileDescription');
-        const charCount = document.getElementById('charCount');
-        charCount.textContent = textarea.value.length;
-      }
-
       async function loadProfile() {
-        const res = await fetch('/admin/api/profile', { headers: authHeadersJSON(), cache: 'no-store' });
+        const res = await fetch('/api/admin/profile', { headers: authHeadersJSON(), cache: 'no-store' });
         const data = await res.json();
         if (!res.ok) {
           document.getElementById('profileMsg').textContent = data.error || 'Error al cargar perfil';
@@ -99,9 +99,9 @@
         }
         document.getElementById('profileName').value = `${data.first_name || ''} ${data.last_name || ''}`.trim();
         document.getElementById('profileEmail').value = data.email || '';
-        document.getElementById('profileDescription').value = data.description || '';
+        document.getElementById('profileFirstName').value = data.first_name || '';
+        document.getElementById('profileLastName').value = data.last_name || '';
         document.getElementById('profilePhotoPreview').src = data.profile_photo_url || '';
-        updateCharCount(); // Actualizar contador después de cargar
         const ul = document.getElementById('profileCourses');
         ul.innerHTML = '';
         (data.courses || []).forEach(c => {
@@ -113,8 +113,9 @@
       }
 
       document.getElementById('saveProfile').addEventListener('click', async () => {
-        const desc = document.getElementById('profileDescription').value;
-        const res = await fetch('/admin/api/profile', { method: 'PATCH', headers: authHeadersJSON(), body: JSON.stringify({ description: desc }) });
+        const firstName = document.getElementById('profileFirstName').value;
+        const lastName = document.getElementById('profileLastName').value;
+        const res = await fetch('/admin/api/profile', { method: 'PATCH', headers: authHeadersJSON(), body: JSON.stringify({ first_name: firstName, last_name: lastName }) });
         const data = await res.json();
         document.getElementById('profileMsg').textContent = res.ok ? 'Perfil actualizado' : (data.error || 'Error');
       });
@@ -129,9 +130,6 @@
         document.getElementById('photoMsg').textContent = res.ok ? 'Foto actualizada' : (data.error || 'Error');
         if (res.ok) document.getElementById('profilePhotoPreview').src = data.profile_photo_url || '';
       });
-
-      // Event listener para actualizar contador de caracteres en tiempo real
-      document.getElementById('profileDescription').addEventListener('input', updateCharCount);
 
       loadProfile();
     </script>

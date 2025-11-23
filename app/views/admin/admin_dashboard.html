@@ -1,1099 +1,348 @@
 {% extends "layout.html" %}
-
 {% block title %}Dashboard - CogniPass{% endblock %}
 
 {% block content %}
-
-<!-- Page Heading -->
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800" id="greetingTitle">Hola, Profesor</h1>
-    <a href="{{ url_for('admin.admin_profile_view') }}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-        <i class="fas fa-cogs fa-sm text-white-50"></i> Configuración
-    </a>
-</div>
-
-<!-- Metrics/KPI Cards Row -->
-<div class="row mb-4">
-    <!-- Total Estudiantes Card -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="text-primary font-weight-bold text-uppercase mb-1">
-                    <small>Estudiantes Totales</small>
-                </div>
-                <div class="h3 mb-0 text-gray-800" id="metricsStudentCount">-</div>
-            </div>
-            <div class="card-footer py-2 bg-light">
-                <div class="small">
-                    <i class="fas fa-users text-primary"></i>
-                    <span id="metricsStudentTrend">--</span>
-                </div>
-            </div>
+<div class="container-fluid mt-4">
+    <!-- Header with Greeting -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-0" id="greetingTitle">Hola, Profesor</h2>
+            <p class="text-muted">Bienvenido a tu dashboard</p>
         </div>
     </div>
 
-    <!-- Cursos Activos Card -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-success shadow h-100 py-2">
-            <div class="card-body">
-                <div class="text-success font-weight-bold text-uppercase mb-1">
-                    <small>Cursos Activos</small>
-                </div>
-                <div class="h3 mb-0 text-gray-800" id="metricsCourseCount">-</div>
-            </div>
-            <div class="card-footer py-2 bg-light">
-                <div class="small">
-                    <i class="fas fa-book text-success"></i>
-                    <span id="metricsCourseTrend">Cursos en el semestre</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sesiones Hoy Card -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info shadow h-100 py-2">
-            <div class="card-body">
-                <div class="text-info font-weight-bold text-uppercase mb-1">
-                    <small>Sesiones Hoy</small>
-                </div>
-                <div class="h3 mb-0 text-gray-800" id="metricsSessionCount">-</div>
-            </div>
-            <div class="card-footer py-2 bg-light">
-                <div class="small">
-                    <i class="fas fa-video text-info"></i>
-                    <span id="metricsSessionTrend">Clases programadas</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tasa de Asistencia Card -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-warning shadow h-100 py-2">
-            <div class="card-body">
-                <div class="text-warning font-weight-bold text-uppercase mb-1">
-                    <small>Tasa de Asistencia</small>
-                </div>
-                <div class="h3 mb-0 text-gray-800" id="metricsAttendanceRate">-</div>
-            </div>
-            <div class="card-footer py-2 bg-light">
-                <div class="small">
-                    <i class="fas fa-percent text-warning"></i>
-                    <span id="metricsAttendanceTrend">Promedio general</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Charts Row (Area + Pie) -->
-<div class="row mb-4">
-    <!-- Area Chart - Attendance Trends -->
-    <div class="col-xl-8 col-lg-7">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">
-                    <i class="fas fa-chart-area"></i> Tendencia de Asistencia (Últimas 7 Clases)
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="chart-area" style="height: 300px;">
-                    <canvas id="metricsAreaChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Pie Chart - Student Distribution -->
-    <div class="col-xl-4 col-lg-5">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">
-                    <i class="fas fa-chart-pie"></i> Distribución de Estudiantes
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="chart-pie pt-4" style="height: 300px;">
-                    <canvas id="metricsPieChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Estudiantes Card -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
-            <i class="fas fa-users"></i> Estudiantes
-        </h6>
-    </div>
-    <div class="card-body">
-        <div class="d-flex flex-wrap gap-2 mb-3">
-            <select id="filterScholarship" class="form-select w-auto">
-                <option value="">Todos</option>
-                <option value="true">Becarios</option>
-                <option value="false">No becarios</option>
-            </select>
-            <button id="openAddStudentModal" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">
-                <i class="fas fa-plus"></i> Agregar estudiante
-            </button>
-        </div>
-        <ul id="studentsList" class="list-group"></ul>
-        <div id="studentsPagination" class="btn-group mt-3" aria-label="Paginación de estudiantes"></div>
-        <div id="studentsMsg" class="small text-muted mt-2"></div>
-    </div>
-</div>
-
-<!-- Cursos Card -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
-            <i class="fas fa-book"></i> Cursos
-        </h6>
-    </div>
-    <div class="card-body">
-        <ul id="coursesList" class="list-group"></ul>
-        <div id="coursesMsg" class="small text-muted mt-2"></div>
-    </div>
-</div>
-
-<!-- Sesión de Clase Card -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
-            <i class="fas fa-video"></i> Sesión de Clase
-        </h6>
-    </div>
-    <div class="card-body">
-        <div class="d-flex flex-wrap gap-2 mb-3">
-            <select id="sessionCourseSelect" class="form-select w-auto"></select>
-            <button id="checkSession" class="btn btn-outline-secondary">Ver sesión activa</button>
-            <button id="startSession" class="btn btn-primary">Iniciar sesión</button>
-            <button id="endSession" class="btn btn-outline-danger">Finalizar sesión</button>
-        </div>
-        <div class="text-muted small">Regla demo: si el alumno llega 1 minuto después de iniciar la sesión, se marca como <strong>tarde</strong>.</div>
-        <div id="sessionMsg" class="small text-muted mt-2"></div>
-    </div>
-</div>
-
-<!-- Attendance Summary Card -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
-            <i class="fas fa-clipboard-list"></i> Resumen de Asistencia
-        </h6>
-    </div>
-    <div class="card-body">
-        <div class="d-flex flex-wrap gap-2 mb-3">
-            <input id="summariesSessionId" class="form-control w-auto" placeholder="session_id" />
-            <button id="loadSummaries" class="btn btn-outline-secondary">Cargar</button>
-        </div>
-        <ul id="summariesList" class="list-group"></ul>
-        <div id="summariesMsg" class="small text-muted mt-2"></div>
-    </div>
-</div>
-
-<!-- Invitar Asesores Card -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
-            <i class="fas fa-user-tie"></i> Invitar Asesor
-        </h6>
-    </div>
-    <div class="card-body">
-        <div class="d-flex flex-wrap gap-2 mb-3">
-            <select id="inviteCourseSelect" class="form-select w-auto"></select>
-            <input id="inviteEmail" type="email" class="form-control w-auto" placeholder="asesor@demo.com" />
-            <button id="sendInvite" class="btn btn-primary">Enviar invitación</button>
-        </div>
-        <div id="inviteMsg" class="small text-muted mt-2"></div>
-    </div>
-</div>
-
-<!-- Modal: Agregar Estudiante -->
-<div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentTitle" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addStudentTitle">Agregar Estudiante</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-12 col-md-6">
-                        <input id="newStudentFirst" class="form-control" placeholder="Nombres" />
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <input id="newStudentLast" class="form-control" placeholder="Apellidos" />
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <input id="newStudentEmail" class="form-control" placeholder="Email" />
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <select id="newStudentScholarship" class="form-select">
-                            <option value="false">No becario</option>
-                            <option value="true">Becario</option>
-                        </select>
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-2">Estudiantes</h6>
+                            <h3 class="mb-0" id="totalStudents">0</h3>
+                        </div>
+                        <div class="text-primary" style="font-size: 2.5rem;">
+                            <i class="fas fa-users"></i>
+                        </div>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <div class="text-muted small mb-2">Cursos del profesor</div>
-                    <div id="newStudentCoursesBox" class="border rounded p-2 overflow-auto" style="max-height: 160px;"></div>
-                </div>
-                <div id="addStudentModalMsg" class="msg mt-2 small"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" id="addStudentSubmit" class="btn btn-primary">Guardar</button>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-2">Cursos</h6>
+                            <h3 class="mb-0" id="totalCourses">0</h3>
+                        </div>
+                        <div class="text-success" style="font-size: 2.5rem;">
+                            <i class="fas fa-book"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-2">Sesiones de Clase</h6>
+                            <h3 class="mb-0" id="totalSessions">0</h3>
+                        </div>
+                        <div class="text-warning" style="font-size: 2.5rem;">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-2">Asistencia Hoy</h6>
+                            <h3 class="mb-0" id="attendanceToday">0%</h3>
+                        </div>
+                        <div class="text-info" style="font-size: 2.5rem;">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header border-bottom bg-light">
+                    <h6 class="mb-0 fw-bold">Asistencia por Mes</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="metricsAreaChart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header border-bottom bg-light">
+                    <h6 class="mb-0 fw-bold">Distribución por Curso</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="coursesPieChart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Tables Row -->
+    <div class="row">
+        <!-- Recent Students -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header border-bottom bg-light">
+                    <h6 class="mb-0 fw-bold">Estudiantes Recientes</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentStudentsBody">
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted py-3">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Courses -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header border-bottom bg-light">
+                    <h6 class="mb-0 fw-bold">Cursos Recientes</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Código</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentCoursesBody">
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted py-3">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Attendance -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header border-bottom bg-light">
+                    <h6 class="mb-0 fw-bold">Asistencia Reciente</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Estudiante</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentAttendanceBody">
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted py-3">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-<!-- Modal: Editar Estudiante -->
-<div class="modal fade" id="editStudentModal" tabindex="-1" aria-labelledby="editStudentTitle" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editStudentTitle">Editar Estudiante</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-12 col-md-6">
-                        <input id="editStudentFirst" class="form-control" placeholder="Nombres" />
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <input id="editStudentLast" class="form-control" placeholder="Apellidos" />
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <input id="editStudentEmail" class="form-control" placeholder="Email" />
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <select id="editStudentScholarship" class="form-select">
-                            <option value="false">No becario</option>
-                            <option value="true">Becario</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <div class="text-muted small mb-2">Cursos del profesor</div>
-                    <div id="editStudentCoursesBox" class="border rounded p-2 overflow-auto" style="max-height: 160px;"></div>
-                </div>
-                <div id="editStudentModalMsg" class="msg mt-2 small"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" id="editStudentSave" class="btn btn-primary">Guardar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
-    // ==================== AUTHENTICATION HELPERS ====================
-    const token = localStorage.getItem('access_token');
+    let metricsAreaChart = null;
+    let coursesPieChart = null;
+
     function authHeaders() {
-        const h = { 'Content-Type': 'application/json' };
-        if (token) h['Authorization'] = `Bearer ${token}`;
-        return h;
+        const token = localStorage.getItem('access_token');
+        return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
 
-    // API Prefix detection
-    let ADMIN_API_PREFIX = '/api/admin';
     async function detectAdminApiPrefix() {
-        const candidates = ['/api/admin', '/admin/api'];
-        for (const prefix of candidates) {
-            try {
-                const res = await fetch(`${prefix}/profile`, { headers: authHeaders(), cache: 'no-store' });
-                if (res.ok) {
-                    ADMIN_API_PREFIX = prefix;
-                    return true;
-                }
-                if (res.status === 401 || res.status === 422) {
-                    ADMIN_API_PREFIX = prefix;
-                    return true;
-                }
-            } catch (e) { }
-        }
-        return false;
+        return '/api/admin';
     }
 
-    // Utilidad: restaurar scroll del documento
-    function restorePageScroll() {
-        try {
-            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-            document.body.classList.remove('modal-open');
-            document.body.style.removeProperty('padding-right');
-            document.body.style.removeProperty('overflow');
-        } catch (e) {
-            console.warn('restorePageScroll warning:', e);
-        }
-    }
-
-    // ==================== STUDENTS ====================
-    const studentsState = { items: [], page: 1, pageSize: 4 };
-
-    function renderStudentsList() {
-        const list = document.getElementById('studentsList');
-        list.innerHTML = '';
-        const start = (studentsState.page - 1) * studentsState.pageSize;
-        const end = start + studentsState.pageSize;
-        const pageItems = studentsState.items.slice(start, end);
-        pageItems.forEach(s => {
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-start flex-wrap gap-2';
-            li.innerHTML = `
-                <div>
-                    <strong>${s.first_name} ${s.last_name}</strong>
-                    <div class="text-muted small">${s.email || '-'} | ${s.is_scholarship_student ? 'Becario' : 'No becario'}</div>
-                    <div class="text-muted small">Cursos: ${(Array.isArray(s.courses) && s.courses.length) ? s.courses.join(', ') : '-'}</div>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                    <button data-id="${s.id}" class="edit-student btn btn-sm btn-outline-primary">Editar</button>
-                    <button data-id="${s.id}" class="delete-student btn btn-sm btn-outline-danger">Eliminar</button>
-                </div>`;
-            list.appendChild(li);
-        });
-    }
-
-    function renderStudentsPagination() {
-        const pag = document.getElementById('studentsPagination');
-        const totalPages = Math.max(1, Math.ceil(studentsState.items.length / studentsState.pageSize));
-        pag.innerHTML = '';
-        
-        const prev = document.createElement('button');
-        prev.textContent = 'Anterior';
-        prev.disabled = studentsState.page <= 1;
-        prev.dataset.goto = String(studentsState.page - 1);
-        prev.className = 'btn btn-sm btn-outline-secondary';
-        pag.appendChild(prev);
-        
-        const maxToShow = 6;
-        let start = Math.max(1, studentsState.page - 2);
-        let end = Math.min(totalPages, start + maxToShow - 1);
-        if (end - start + 1 < maxToShow) {
-            start = Math.max(1, end - maxToShow + 1);
-        }
-        
-        for (let p = start; p <= end; p++) {
-            const b = document.createElement('button');
-            b.textContent = String(p);
-            b.dataset.goto = String(p);
-            b.className = 'btn btn-sm btn-outline-secondary';
-            if (p === studentsState.page) {
-                b.className = 'btn btn-sm btn-primary active';
-            }
-            pag.appendChild(b);
-        }
-        
-        const next = document.createElement('button');
-        next.textContent = 'Siguiente';
-        next.disabled = studentsState.page >= totalPages;
-        next.dataset.goto = String(studentsState.page + 1);
-        next.className = 'btn btn-sm btn-outline-secondary';
-        pag.appendChild(next);
-    }
-
-    document.getElementById('studentsPagination').addEventListener('click', (e) => {
-        const btn = e.target.closest('button');
-        if (!btn || !btn.dataset.goto) return;
-        const targetPage = Number(btn.dataset.goto);
-        const totalPages = Math.max(1, Math.ceil(studentsState.items.length / studentsState.pageSize));
-        if (targetPage >= 1 && targetPage <= totalPages) {
-            studentsState.page = targetPage;
-            renderStudentsList();
-            renderStudentsPagination();
-        }
-    });
-
-    async function loadStudents() {
-        const scholarship = document.getElementById('filterScholarship').value;
-        const prefixes = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
-        let lastError = 'Error al cargar estudiantes';
-        
-        for (const p of prefixes) {
-            const url = `${p}/students` + (scholarship ? `?scholarship=${scholarship}` : '');
-            try {
-                const res = await fetch(url, { headers: authHeaders(), cache: 'no-store' });
-                const data = await res.json().catch(() => ({}));
-                
-                if (res.status === 401 || res.status === 422) {
-                    document.getElementById('studentsMsg').textContent = 'No autorizado: inicia sesión como administrador';
-                    setTimeout(() => { window.location.href = '/login'; }, 800);
-                    return;
-                }
-                
-                if (res.ok) {
-                    const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
-                    if (Array.isArray(items)) {
-                        ADMIN_API_PREFIX = p;
-                        studentsState.items = items;
-                        studentsState.page = 1;
-                        renderStudentsList();
-                        renderStudentsPagination();
-                        document.getElementById('studentsMsg').textContent = '';
-                        return;
-                    }
-                }
-                lastError = data.error || lastError;
-            } catch (e) {
-                lastError = e?.message || lastError;
-            }
-        }
-        document.getElementById('studentsMsg').textContent = lastError;
-    }
-
-    document.getElementById('filterScholarship').addEventListener('change', loadStudents);
-
-    // ==================== ADD STUDENT MODAL ====================
-    function openAddStudentModal() {
-        try {
-            document.getElementById('addStudentModalMsg').textContent = '';
-            const modalEl = document.getElementById('addStudentModal');
-            if (window.bootstrap && bootstrap.Modal) {
-                const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
-                instance.show();
-                window.addStudentModalInstance = instance;
-            } else {
-                modalEl.classList.add('show');
-                modalEl.style.display = 'block';
-                modalEl.removeAttribute('aria-hidden');
-            }
-        } catch (err) {
-            console.error('Error abriendo modal de agregar estudiante', err);
-        }
-    }
-
-    function closeAddStudentModal() {
-        const modalEl = document.getElementById('addStudentModal');
-        try {
-            if (window.bootstrap && bootstrap.Modal) {
-                const instance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
-                instance.hide();
-                setTimeout(restorePageScroll, 120);
-            } else {
-                modalEl.classList.remove('show');
-                modalEl.style.display = 'none';
-                modalEl.setAttribute('aria-hidden','true');
-                const bd = document.querySelector('.modal-backdrop');
-                if (bd) bd.remove();
-                restorePageScroll();
-            }
-        } catch (err) {
-            console.error('Error cerrando modal de agregar estudiante', err);
-            modalEl.classList.remove('show');
-            modalEl.style.display = 'none';
-            modalEl.setAttribute('aria-hidden','true');
-            restorePageScroll();
-        }
-    }
-
-    document.getElementById('openAddStudentModal').addEventListener('click', openAddStudentModal);
-
-    document.getElementById('addStudentSubmit').addEventListener('click', async () => {
-        const payload = {
-            first_name: document.getElementById('newStudentFirst').value.trim(),
-            last_name: document.getElementById('newStudentLast').value.trim(),
-            email: document.getElementById('newStudentEmail').value.trim() || null,
-            is_scholarship_student: document.getElementById('newStudentScholarship').value === 'true'
-        };
-        
-        const prefixesCreate = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
-        let res = null, data = null, okCreate = false;
-        
-        for (const p of prefixesCreate) {
-            try {
-                res = await fetch(`${p}/students`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
-                data = await res.json().catch(() => ({}));
-                if (res.ok) { ADMIN_API_PREFIX = p; okCreate = true; break; }
-            } catch (e) { }
-        }
-        
-        if (!okCreate) {
-            document.getElementById('addStudentModalMsg').textContent = (data && data.error) || 'Error al agregar estudiante';
-            return;
-        }
-        
-        const selectedIds = Array.from(document.querySelectorAll('#newStudentCoursesBox input[type="checkbox"]:checked'))
-            .map(el => parseInt(el.value, 10))
-            .filter(Number.isFinite);
-        
-        let msg = 'Estudiante agregado';
-        if (data.id && selectedIds.length > 0) {
-            const prefixesEnroll = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
-            for (const p of prefixesEnroll) {
-                try {
-                    const res2 = await fetch(`${p}/students/${data.id}/enrollments`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ course_ids: selectedIds }) });
-                    const data2 = await res2.json().catch(() => ({}));
-                    if (res2.ok) { ADMIN_API_PREFIX = p; msg = 'Estudiante agregado y cursos asignados'; break; }
-                    msg = data2.error || msg;
-                } catch (e) { }
-            }
-        }
-        
-        document.getElementById('addStudentModalMsg').textContent = msg;
-        closeAddStudentModal();
-        loadStudents();
-    });
-
-    document.getElementById('studentsList').addEventListener('click', async (e) => {
-        const delBtn = e.target.closest('button.delete-student');
-        const editBtn = e.target.closest('button.edit-student');
-        if (!delBtn && !editBtn) return;
-        
-        const id = (delBtn || editBtn).getAttribute('data-id');
-        if (!id) return;
-        
-        if (delBtn) {
-            const sure = confirm('¿Estás seguro de eliminar a este estudiante? El cambio será irreversible');
-            if (!sure) return;
-            
-            const prefixesDel = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
-            let delOk = false, delMsg = 'Error';
-            
-            for (const p of prefixesDel) {
-                try {
-                    const res = await fetch(`${p}/students/${id}`, { method: 'DELETE', headers: authHeaders() });
-                    const data = await res.json().catch(() => ({}));
-                    if (res.ok) { ADMIN_API_PREFIX = p; delOk = true; delMsg = 'Eliminado'; break; }
-                    delMsg = data.error || delMsg;
-                } catch (e) { }
-            }
-            
-            document.getElementById('studentsMsg').textContent = delOk ? 'Eliminado' : delMsg;
-            if (delOk) loadStudents();
-        }
-        
-        if (editBtn) {
-            const s = studentsState.items.find(it => String(it.id) === String(id));
-            if (!s) return;
-            
-            document.getElementById('editStudentFirst').value = s.first_name || '';
-            document.getElementById('editStudentLast').value = s.last_name || '';
-            document.getElementById('editStudentEmail').value = s.email || '';
-            document.getElementById('editStudentScholarship').value = s.is_scholarship_student ? 'true' : 'false';
-            
-            const editBox = document.getElementById('editStudentCoursesBox');
-            if (editBox) Array.from(editBox.querySelectorAll('input[type="checkbox"]')).forEach(ch => { ch.checked = false; });
-            
-            try {
-                const resE = await fetch(`${ADMIN_API_PREFIX}/students/${id}/enrollments`, { headers: authHeaders() });
-                const dataE = await resE.json().catch(() => ({}));
-                if (resE.ok && Array.isArray(dataE.items)) {
-                    const ids = new Set(dataE.items.map(c => c.id));
-                    if (editBox) Array.from(editBox.querySelectorAll('input[type="checkbox"]')).forEach(ch => {
-                        if (ids.has(parseInt(ch.value, 10))) ch.checked = true;
-                    });
-                }
-            } catch (e) { }
-            
-            window.currentEditStudentId = id;
-            document.getElementById('editStudentModalMsg').textContent = '';
-            const modalEl = document.getElementById('editStudentModal');
-            if (window.bootstrap && bootstrap.Modal) {
-                const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
-                instance.show();
-                window.editStudentModalInstance = instance;
-            } else {
-                modalEl.classList.add('show');
-                modalEl.style.display = 'block';
-                modalEl.removeAttribute('aria-hidden');
-            }
-        }
-    });
-
-    // ==================== EDIT STUDENT MODAL ====================
-    function closeEditStudentModal() {
-        const modalEl = document.getElementById('editStudentModal');
-        try {
-            if (window.bootstrap && bootstrap.Modal) {
-                const instance = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
-                instance.hide();
-                setTimeout(restorePageScroll, 120);
-            } else {
-                modalEl.classList.remove('show');
-                modalEl.style.display = 'none';
-                modalEl.setAttribute('aria-hidden','true');
-                restorePageScroll();
-            }
-        } catch (err) {
-            console.error('Error cerrando modal de edición', err);
-            modalEl.classList.remove('show');
-            modalEl.style.display = 'none';
-            modalEl.setAttribute('aria-hidden','true');
-            restorePageScroll();
-        }
-    }
-
-    document.getElementById('editStudentSave').addEventListener('click', async () => {
-        const id = window.currentEditStudentId;
-        if (!id) return;
-        
-        const payload = {
-            first_name: document.getElementById('editStudentFirst').value.trim(),
-            last_name: document.getElementById('editStudentLast').value.trim(),
-            email: document.getElementById('editStudentEmail').value.trim() || null,
-            is_scholarship_student: document.getElementById('editStudentScholarship').value === 'true'
-        };
-        
-        let ok = false, data = null;
-        const prefixesUpd = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
-        
-        for (const p of prefixesUpd) {
-            try {
-                const res = await fetch(`${p}/students/${id}`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify(payload) });
-                data = await res.json().catch(() => ({}));
-                if (res.ok) { ADMIN_API_PREFIX = p; ok = true; break; }
-            } catch (e) { }
-        }
-        
-        const selectedIds = Array.from(document.querySelectorAll('#editStudentCoursesBox input[type="checkbox"]:checked'))
-            .map(el => parseInt(el.value, 10))
-            .filter(Number.isFinite);
-        
-        let okEnroll = false, errEnroll = 'Error';
-        const prefixesEnroll2 = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
-        
-        for (const p of prefixesEnroll2) {
-            try {
-                const res2 = await fetch(`${p}/students/${id}/enrollments`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ course_ids: selectedIds }) });
-                const data2 = await res2.json().catch(() => ({}));
-                if (res2.ok) { ADMIN_API_PREFIX = p; okEnroll = true; break; }
-                errEnroll = data2.error || errEnroll;
-            } catch (e) { }
-        }
-        
-        const allOk = ok && (selectedIds.length === 0 ? true : okEnroll);
-        document.getElementById('editStudentModalMsg').textContent = allOk ? 'Actualizado' : ((data && data.error) || errEnroll || 'Error');
-        
-        if (allOk) {
-            closeEditStudentModal();
-            window.currentEditStudentId = null;
-            loadStudents();
-        }
-    });
-
-    // ==================== COURSES ====================
-    async function loadCourses() {
-        const list = document.getElementById('coursesList');
-        const select1 = document.getElementById('sessionCourseSelect');
-        const select2 = document.getElementById('inviteCourseSelect');
-        const box3 = document.getElementById('newStudentCoursesBox');
-        const box4 = document.getElementById('editStudentCoursesBox');
-        
-        list.innerHTML = '';
-        select1.innerHTML = '';
-        select2.innerHTML = '';
-        if (box3) box3.innerHTML = '';
-        if (box4) box4.innerHTML = '';
-        
-        const prefixes = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
-        let lastError = 'Error al cargar cursos';
-        
-        for (const p of prefixes) {
-            try {
-                const res = await fetch(`${p}/courses`, { headers: authHeaders() });
-                const data = await res.json().catch(() => ({}));
-                
-                if (res.status === 401 || res.status === 422) {
-                    document.getElementById('coursesMsg').textContent = 'No autorizado: inicia sesión como administrador';
-                    setTimeout(() => { window.location.href = '/login'; }, 800);
-                    return;
-                }
-                
-                if (res.ok) {
-                    const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
-                    if (Array.isArray(items)) {
-                        ADMIN_API_PREFIX = p;
-                        window.adminCoursesCache = items;
-                        
-                        items.forEach(c => {
-                            const li = document.createElement('li');
-                            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                            li.innerHTML = `<div><strong>${c.name}</strong> <span class="text-muted small">#${c.id}</span></div>`;
-                            list.appendChild(li);
-                            
-                            const opt1 = new Option(c.name, c.id);
-                            const opt2 = new Option(c.name, c.id);
-                            select1.add(opt1);
-                            select2.add(opt2);
-                            
-                            if (box3) {
-                                const wrap = document.createElement('div');
-                                wrap.className = 'form-check form-check-inline';
-                                wrap.innerHTML = `
-                                    <input class="form-check-input" type="checkbox" value="${c.id}" data-course-id="${c.id}" id="new-course-${c.id}" />
-                                    <label class="form-check-label" for="new-course-${c.id}">${c.id} - ${c.name}</label>`;
-                                box3.appendChild(wrap);
-                            }
-                            
-                            if (box4) {
-                                const wrap = document.createElement('div');
-                                wrap.className = 'form-check form-check-inline';
-                                wrap.innerHTML = `
-                                    <input class="form-check-input" type="checkbox" value="${c.id}" data-course-id="${c.id}" id="edit-course-${c.id}" />
-                                    <label class="form-check-label" for="edit-course-${c.id}">${c.id} - ${c.name}</label>`;
-                                box4.appendChild(wrap);
-                            }
-                        });
-                        
-                        document.getElementById('coursesMsg').textContent = '';
-                        return;
-                    }
-                }
-                lastError = data.error || lastError;
-            } catch (e) {
-                lastError = e?.message || lastError;
-            }
-        }
-        document.getElementById('coursesMsg').textContent = lastError;
-    }
-
-    // ==================== SESSION CONTROL ====================
-    function httpErrorMessage(status, data, textFallback) {
-        const msg = (data && data.error) || textFallback || '';
-        return `HTTP ${status}${msg ? `: ${msg}` : ''}`;
-    }
-
-    async function parseResponse(res) {
-        try { return await res.json(); } catch (e) {
-            try { const t = await res.text(); return { error: t?.slice(0, 180) || '' }; } catch { return {}; }
-        }
-    }
-
-    document.getElementById('checkSession').addEventListener('click', async () => {
-        const courseId = document.getElementById('sessionCourseSelect').value;
-        if (!courseId) {
-            document.getElementById('sessionMsg').textContent = 'Por favor selecciona un curso primero.';
-            return;
-        }
-        window.location.href = `/admin/course/${courseId}/session`;
-    });
-
-    document.getElementById('startSession').addEventListener('click', async () => {
-        const courseId = document.getElementById('sessionCourseSelect').value;
-        if (!courseId) return;
-        await detectAdminApiPrefix();
-        const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}/session/start`, { method: 'POST', headers: authHeaders() });
-        const data = await parseResponse(res);
-        if (res.status === 401 || res.status === 403 || res.status === 422) {
-            document.getElementById('sessionMsg').textContent = data.error || 'No autorizado: inicia sesión como administrador';
-            return;
-        }
-        if (res.ok && data.session_id) {
-            document.getElementById('sessionMsg').textContent = `Sesión iniciada #${data.session_id}`;
-            setTimeout(() => {
-                window.location.href = `/admin/course/${courseId}/session`;
-            }, 400);
-        } else {
-            document.getElementById('sessionMsg').textContent = data.error || httpErrorMessage(res.status, data, '') || 'Error al iniciar sesión de clase';
-        }
-    });
-
-    document.getElementById('endSession').addEventListener('click', async () => {
-        const courseId = document.getElementById('sessionCourseSelect').value;
-        if (!courseId) return;
-        await detectAdminApiPrefix();
-        const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}/session/end`, { method: 'POST', headers: authHeaders() });
-        const data = await parseResponse(res);
-        if (res.status === 401 || res.status === 403 || res.status === 422) {
-            document.getElementById('sessionMsg').textContent = data.error || 'No autorizado: inicia sesión como administrador';
-            return;
-        }
-        document.getElementById('sessionMsg').textContent = res.ok ? `Sesión finalizada #${data.session_id}` : (data.error || httpErrorMessage(res.status, data, 'Error'));
-    });
-
-    // ==================== SECURITY CHECK ====================
-    async function assertAdminOrRedirect() {
-        if (!localStorage.getItem('access_token')) {
-            window.location.href = '/login';
-            return false;
-        }
-        try {
-            await detectAdminApiPrefix();
-            const res = await fetch(`${ADMIN_API_PREFIX}/profile`, { headers: authHeaders(), cache: 'no-store' });
-            if (!res.ok || res.status === 401 || res.status === 422) {
-                document.getElementById('sessionMsg').textContent = 'No autorizado: inicia sesión como administrador';
-                setTimeout(() => { window.location.href = '/login'; }, 800);
-                return false;
-            }
-            return true;
-        } catch (e) {
-            document.getElementById('sessionMsg').textContent = 'No se pudo verificar la sesión';
-            return false;
-        }
-    }
-
-    // ==================== BOOTSTRAP ====================
-    async function bootstrap() {
-        const ok = await assertAdminOrRedirect();
-        if (!ok) return;
-        
-        loadStudents();
-        loadCourses();
-        loadProfile();
-        loadMetrics();
-        restorePageScroll();
-        
-        ['addStudentModal','editStudentModal'].forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.addEventListener('hidden.bs.modal', restorePageScroll);
-        });
-    }
-
-    bootstrap();
-
-    // ==================== SUMMARIES ====================
-    async function loadSummaries() {
-        const sessionId = document.getElementById('summariesSessionId').value.trim();
-        const url = '/api/admin/summaries' + (sessionId ? `?session_id=${sessionId}` : '');
-        const res = await fetch(url, { headers: authHeaders() });
-        const data = await res.json();
-        const list = document.getElementById('summariesList');
-        list.innerHTML = '';
-        
-        if (res.ok && Array.isArray(data.items)) {
-            data.items.forEach(a => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item d-flex justify-content-between align-items-start flex-wrap gap-2';
-                li.innerHTML = `
-                    <div>
-                        Alumno #${a.student_id} | Sesión #${a.session_id}
-                        <div class="text-muted small">Presencia: ${a.presence_percentage}% ${a.is_manual_override ? '(Manual)' : ''}</div>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button data-id="${a.id}" class="edit-summary btn btn-sm btn-outline-primary">Editar</button>
-                    </div>`;
-                list.appendChild(li);
-            });
-        } else {
-            document.getElementById('summariesMsg').textContent = data.error || 'Error al cargar summaries';
-        }
-    }
-
-    document.getElementById('loadSummaries').addEventListener('click', loadSummaries);
-    document.getElementById('summariesList').addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
-        if (!id) return;
-        if (e.target.classList.contains('edit-summary')) {
-            const percentage = prompt('Nuevo porcentaje de presencia (0-100):');
-            const override = confirm('Marcar como manual override?');
-            const res = await fetch(`/api/admin/summaries/${id}`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ presence_percentage: Number(percentage), is_manual_override: override }) });
-            const data = await res.json();
-            document.getElementById('summariesMsg').textContent = res.ok ? 'Actualizado' : (data.error || 'Error');
-            if (res.ok) loadSummaries();
-        }
-    });
-
-    // ==================== INVITATIONS ====================
-    document.getElementById('sendInvite').addEventListener('click', async () => {
-        const courseId = document.getElementById('inviteCourseSelect').value;
-        const email = document.getElementById('inviteEmail').value.trim();
-        if (!courseId || !email) return;
-        const res = await fetch(`/api/admin/courses/${courseId}/advisor-invitations`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ email }) });
-        const data = await res.json();
-        document.getElementById('inviteMsg').textContent = res.ok ? 'Invitación enviada' : (data.error || 'Error');
-    });
-
-    // ==================== PROFILE ====================
     async function loadProfile() {
-        const prefixes = ADMIN_API_PREFIX === '/api/admin' ? ['/api/admin', '/admin/api'] : ['/admin/api', '/api/admin'];
-        let data = null;
-        
+        const prefixes = ['/api/admin', '/admin/api'];
         for (const p of prefixes) {
             try {
                 const res = await fetch(`${p}/profile`, { headers: authHeaders() });
-                const d = await res.json().catch(() => ({}));
-                if (!res.ok || res.status === 422) {
-                    if (res.status === 401 || res.status === 422) {
-                        return;
-                    }
-                    continue;
+                if (res.ok) {
+                    const data = await res.json();
+                    const name = `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.email || 'Profesor';
+                    document.getElementById('greetingTitle').textContent = `Hola, ${name}`;
+                    return;
                 }
-                ADMIN_API_PREFIX = p;
-                data = d;
-                break;
-            } catch (e) { }
-        }
-        
-        if (!data) {
-            return;
-        }
-        
-        const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
-        const greetEl = document.getElementById('greetingTitle');
-        if (greetEl) {
-            const greetName = fullName || (data.email || 'Profesor');
-            greetEl.textContent = `Hola, ${greetName}`;
-            document.title = `${greetName} - CogniPass`;
-        }
-        
-        // Update topbar user name
-        const topbarName = document.getElementById('topbarUserName');
-        if (topbarName) {
-            topbarName.textContent = fullName || data.email || 'Profesor';
+            } catch (e) {}
         }
     }
-
-    // ==================== METRICS & CHARTS ====================
-    let metricsAreaChart = null;
-    let metricsPieChart = null;
 
     async function loadMetrics() {
         try {
-            // Load students for count
-            const studentsRes = await fetch(`${ADMIN_API_PREFIX}/students`, { headers: authHeaders() });
-            if (studentsRes.ok) {
-                const studentsData = await studentsRes.json();
-                const studentCount = Array.isArray(studentsData) ? studentsData.length : studentsData.data?.length || 0;
-                document.getElementById('metricsStudentCount').textContent = studentCount;
-            }
-
-            // Load courses for count
-            const coursesRes = await fetch(`${ADMIN_API_PREFIX}/courses`, { headers: authHeaders() });
-            if (coursesRes.ok) {
-                const coursesData = await coursesRes.json();
-                const courseCount = Array.isArray(coursesData) ? coursesData.length : coursesData.data?.length || 0;
-                document.getElementById('metricsCourseCount').textContent = courseCount;
-            }
-
-            // Load sessions for today
-            const sessionsRes = await fetch(`${ADMIN_API_PREFIX}/sessions`, { headers: authHeaders() });
-            if (sessionsRes.ok) {
-                const sessionsData = await sessionsRes.json();
-                const sessions = Array.isArray(sessionsData) ? sessionsData : sessionsData.data || [];
-                const today = new Date().toDateString();
-                const todaySessions = sessions.filter(s => {
-                    if (!s.start_time) return false;
-                    const sessionDate = new Date(s.start_time).toDateString();
-                    return sessionDate === today;
-                });
-                document.getElementById('metricsSessionCount').textContent = todaySessions.length;
-            }
-
-            // Calculate attendance rate
-            const attendanceRes = await fetch(`${ADMIN_API_PREFIX}/attendance-summaries`, { headers: authHeaders() });
-            if (attendanceRes.ok) {
-                const attendanceData = await attendanceRes.json();
-                const summaries = Array.isArray(attendanceData) ? attendanceData : attendanceData.data || [];
-                if (summaries.length > 0) {
-                    const avgRate = summaries.reduce((sum, s) => sum + (s.attendance_rate || 0), 0) / summaries.length;
-                    document.getElementById('metricsAttendanceRate').textContent = Math.round(avgRate * 100) + '%';
-                }
-            }
-
-            // Initialize charts with sample data
-            initMetricsCharts();
-        } catch (e) {
-            console.error('Error loading metrics:', e);
+            const apiPrefix = await detectAdminApiPrefix();
+            const res = await fetch(`${apiPrefix}/metrics`, { headers: authHeaders() });
+            if (!res.ok) throw new Error('Failed to load metrics');
+            
+            const data = await res.json();
+            document.getElementById('totalStudents').textContent = data.total_students || 0;
+            document.getElementById('totalCourses').textContent = data.total_courses || 0;
+            document.getElementById('totalSessions').textContent = data.total_sessions || 0;
+            document.getElementById('attendanceToday').textContent = (data.attendance_today || 0) + '%';
+        } catch (error) {
+            console.error('Error loading metrics:', error);
         }
     }
 
-    function initMetricsCharts() {
-        // Check if Chart.js is available
-        if (typeof Chart === 'undefined') {
-            console.warn('Chart.js not loaded yet');
-            return;
-        }
+    async function loadCharts() {
+        try {
+            const apiPrefix = await detectAdminApiPrefix();
+            const res = await fetch(`${apiPrefix}/metrics`, { headers: authHeaders() });
+            if (!res.ok) throw new Error('Failed to load chart data');
+            
+            const data = await res.json();
 
-        // Area Chart - Attendance Trends
-        const areaCtx = document.getElementById('metricsAreaChart');
-        if (areaCtx && !metricsAreaChart) {
-            metricsAreaChart = new Chart(areaCtx, {
+            // Area Chart - Monthly Attendance
+            const ctxArea = document.getElementById('metricsAreaChart').getContext('2d');
+            if (metricsAreaChart) metricsAreaChart.destroy();
+            metricsAreaChart = new Chart(ctxArea, {
                 type: 'line',
                 data: {
-                    labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5', 'Semana 6', 'Semana 7'],
+                    labels: data.months || ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
                     datasets: [{
-                        label: 'Asistencia',
-                        fill: true,
-                        lineTension: 0.3,
-                        backgroundColor: 'rgba(78, 115, 223, 0.05)',
-                        borderColor: 'rgba(78, 115, 223, 1)',
-                        pointRadius: 3,
-                        pointBackgroundColor: 'rgba(78, 115, 223, 1)',
-                        pointBorderColor: 'rgba(78, 115, 223, 1)',
-                        pointHoverRadius: 3,
-                        pointHoverBackgroundColor: 'rgba(78, 115, 223, 1)',
-                        pointHoverBorderColor: 'rgba(78, 115, 223, 1)',
-                        pointHitRadius: 10,
-                        pointBorderWidth: 2,
-                        data: [78, 82, 85, 81, 88, 90, 87],
-                    }],
+                        label: 'Asistencia (%)',
+                        data: data.attendance_data || [80, 82, 85, 83, 87, 90],
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            labels: { fontColor: '#858796' }
-                        },
-                        filler: {
-                            propagate: true
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: { fontColor: '#858796' },
-                            grid: { 
-                                color: 'rgba(200, 200, 200, 0.2)'
-                            }
-                        },
-                        x: {
-                            ticks: { fontColor: '#858796' },
-                            grid: { 
-                                display: false,
-                                color: 'rgba(200, 200, 200, 0.2)'
-                            }
-                        }
-                    }
+                    plugins: { legend: { display: true } }
                 }
             });
-        }
 
-        // Pie Chart - Student Distribution
-        const pieCtx = document.getElementById('metricsPieChart');
-        if (pieCtx && !metricsPieChart) {
-            metricsPieChart = new Chart(pieCtx, {
+            // Pie Chart - Courses Distribution
+            const ctxPie = document.getElementById('coursesPieChart').getContext('2d');
+            if (coursesPieChart) coursesPieChart.destroy();
+            coursesPieChart = new Chart(ctxPie, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Presentes', 'Ausentes', 'Tardíos'],
+                    labels: data.course_names || ['Curso 1', 'Curso 2', 'Curso 3'],
                     datasets: [{
-                        data: [55, 30, 15],
-                        backgroundColor: [
-                            'rgba(78, 115, 223, 0.8)',
-                            'rgba(220, 53, 69, 0.8)',
-                            'rgba(255, 193, 7, 0.8)'
-                        ],
-                        borderColor: [
-                            'rgba(78, 115, 223, 1)',
-                            'rgba(220, 53, 69, 1)',
-                            'rgba(255, 193, 7, 1)'
-                        ],
-                        borderWidth: 2,
-                    }],
+                        data: data.course_students || [10, 15, 12],
+                        backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6c757d']
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { fontColor: '#858796' }
-                        }
-                    }
+                    plugins: { legend: { display: true } }
                 }
             });
+        } catch (error) {
+            console.error('Error loading charts:', error);
         }
     }
+
+    async function loadSummaries() {
+        try {
+            const apiPrefix = await detectAdminApiPrefix();
+
+            // Load Recent Students
+            const studentsRes = await fetch(`${apiPrefix}/students?limit=5`, { headers: authHeaders() });
+            if (studentsRes.ok) {
+                const students = await studentsRes.json();
+                const tbody = document.getElementById('recentStudentsBody');
+                tbody.innerHTML = students.data.slice(0, 5).map(s => `
+                    <tr>
+                        <td>${s.first_name || ''} ${s.last_name || ''}</td>
+                        <td><small>${s.email}</small></td>
+                    </tr>
+                `).join('') || '<tr><td colspan="2" class="text-center text-muted">Sin estudiantes</td></tr>';
+            }
+
+            // Load Recent Courses
+            const coursesRes = await fetch(`${apiPrefix}/courses?limit=5`, { headers: authHeaders() });
+            if (coursesRes.ok) {
+                const courses = await coursesRes.json();
+                const tbody = document.getElementById('recentCoursesBody');
+                tbody.innerHTML = courses.data.slice(0, 5).map(c => `
+                    <tr>
+                        <td>${c.name}</td>
+                        <td><small>${c.start_time || 'N/A'}</small></td>
+                    </tr>
+                `).join('') || '<tr><td colspan="2" class="text-center text-muted">Sin cursos</td></tr>';
+            }
+
+            // Load Recent Attendance
+            const attendanceRes = await fetch(`${apiPrefix}/attendance?limit=5`, { headers: authHeaders() });
+            if (attendanceRes.ok) {
+                const attendance = await attendanceRes.json();
+                const tbody = document.getElementById('recentAttendanceBody');
+                tbody.innerHTML = attendance.data.slice(0, 5).map(a => `
+                    <tr>
+                        <td><small>${a.student_name}</small></td>
+                        <td><small><span class="badge ${a.status === 'presente' ? 'bg-success' : a.status === 'tardanza' ? 'bg-warning' : 'bg-danger'}">${a.status}</span></small></td>
+                    </tr>
+                `).join('') || '<tr><td colspan="2" class="text-center text-muted">Sin asistencia</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading summaries:', error);
+        }
+    }
+
+    async function init() {
+        await loadProfile();
+        await loadMetrics();
+        await loadCharts();
+
+        await loadSummaries();
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', init);
 </script>
 {% endblock %}

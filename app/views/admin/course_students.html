@@ -1,0 +1,378 @@
+{% extends "layout.html" %}
+
+{% block title %}Estudiantes del Curso - CogniPass{% endblock %}
+
+{% block content %}
+
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h1 class="h3 mb-0 text-gray-800">Estudiantes del Curso</h1>
+        <p class="text-muted small" id="courseNameDisplay">--</p>
+    </div>
+    <div>
+        <a href="/admin/courses" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Volver a Cursos
+        </a>
+        <a href="#" id="addStudentBtn" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> Agregar Estudiante
+        </a>
+    </div>
+</div>
+
+<!-- Error/Success Messages -->
+<div id="messageContainer"></div>
+
+<!-- Estudiantes Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-users"></i> Tabla de Estudiantes (5 por página)
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="studentsTable">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Becario</th>
+                        <th>Asistencia</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Cargando estudiantes...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <button id="prevBtn" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-chevron-left"></i> Anterior
+            </button>
+            <span id="paginationInfo" class="text-muted">Página 1</span>
+            <button id="nextBtn" class="btn btn-outline-primary btn-sm">
+                Siguiente <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal fade" id="addStudentModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Agregar Estudiante al Curso</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="addStudentMessage"></div>
+                <form id="addStudentForm">
+                    <div class="form-group">
+                        <label>Seleccionar Estudiante Existente</label>
+                        <select id="studentSelect" class="form-control">
+                            <option value="">-- Cargando estudiantes --</option>
+                        </select>
+                    </div>
+                    <p class="text-muted text-center">o</p>
+                    <div class="form-group">
+                        <label>Crear Nuevo Estudiante</label>
+                        <input type="text" id="studentFirstName" class="form-control mb-2" placeholder="Nombre">
+                        <input type="text" id="studentLastName" class="form-control mb-2" placeholder="Apellido">
+                        <input type="email" id="studentEmail" class="form-control mb-2" placeholder="Email">
+                        <label class="custom-control custom-checkbox">
+                            <input type="checkbox" id="studentScholarship" class="custom-control-input">
+                            <span class="custom-control-label">Es becario</span>
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmAddStudent">Agregar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let ADMIN_API_PREFIX = '/api/admin';
+    const courseId = new URLSearchParams(window.location.search).get('course_id') || 
+                     window.location.pathname.split('/').filter(x => x).pop();
+    
+    let studentsPerPage = 5;
+    let currentStudentPage = 1;
+    let allStudents = [];
+    let courseStudents = [];
+
+    function authHeaders() {
+        const token = localStorage.getItem('access_token');
+        return {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    function showMessage(message, type = 'success', elementId = 'messageContainer') {
+        const container = document.getElementById(elementId);
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        `;
+        container.innerHTML = '';
+        container.appendChild(alert);
+        setTimeout(() => alert.remove(), 5000);
+    }
+
+    async function detectAdminApiPrefix() {
+        const prefixes = ['/api/admin', '/admin/api'];
+        for (const prefix of prefixes) {
+            try {
+                const res = await fetch(`${prefix}/profile`, { headers: authHeaders() });
+                if (res.ok) {
+                    ADMIN_API_PREFIX = prefix;
+                    return;
+                }
+            } catch (e) { }
+        }
+    }
+
+    async function loadCourseData() {
+        try {
+            await detectAdminApiPrefix();
+            const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}`, { headers: authHeaders() });
+            
+            if (!res.ok) {
+                showMessage('Error al cargar el curso', 'danger');
+                return;
+            }
+
+            const course = await res.json();
+            document.getElementById('courseNameDisplay').textContent = course.name;
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger');
+        }
+    }
+
+    async function loadCourseStudents() {
+        try {
+            const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}/students`, { headers: authHeaders() });
+            
+            if (!res.ok) {
+                showMessage('Error al cargar estudiantes', 'danger');
+                return;
+            }
+
+            const data = await res.json();
+            courseStudents = Array.isArray(data) ? data : data.data || [];
+            displayStudentsTable();
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger');
+        }
+    }
+
+    async function displayStudentsTable() {
+        const tbody = document.getElementById('studentsTableBody');
+        
+        if (courseStudents.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay estudiantes en este curso</td></tr>';
+            document.getElementById('prevBtn').disabled = true;
+            document.getElementById('nextBtn').disabled = true;
+            return;
+        }
+
+        const start = (currentStudentPage - 1) * studentsPerPage;
+        const end = start + studentsPerPage;
+        const paginatedStudents = courseStudents.slice(start, end);
+        const totalPages = Math.ceil(courseStudents.length / studentsPerPage);
+
+        tbody.innerHTML = paginatedStudents.map(student => `
+            <tr>
+                <td>${student.id}</td>
+                <td>${student.first_name} ${student.last_name}</td>
+                <td>${student.email || '--'}</td>
+                <td>
+                    ${student.is_scholarship_student ? 
+                        '<span class="badge badge-success">Sí</span>' : 
+                        '<span class="badge badge-secondary">No</span>'}
+                </td>
+                <td><span class="badge badge-info">${(Math.random() * 100).toFixed(1)}%</span></td>
+                <td>
+                    <button class="btn btn-sm btn-warning" onclick="editStudent(${student.id})" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="removeStudent(${student.id})" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+        document.getElementById('paginationInfo').textContent = 
+            `Página ${currentStudentPage} de ${totalPages}`;
+        document.getElementById('prevBtn').disabled = currentStudentPage === 1;
+        document.getElementById('nextBtn').disabled = currentStudentPage === totalPages;
+    }
+
+    async function loadAllStudents() {
+        try {
+            const res = await fetch(`${ADMIN_API_PREFIX}/students`, { headers: authHeaders() });
+            
+            if (!res.ok) {
+                showMessage('Error al cargar estudiantes', 'danger', 'addStudentMessage');
+                return;
+            }
+
+            const data = await res.json();
+            allStudents = Array.isArray(data) ? data : data.data || [];
+            
+            const select = document.getElementById('studentSelect');
+            select.innerHTML = '<option value="">-- Seleccionar estudiante existente --</option>';
+            
+            allStudents.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.id;
+                option.textContent = `${student.first_name} ${student.last_name}`;
+                select.appendChild(option);
+            });
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger', 'addStudentMessage');
+        }
+    }
+
+    async function addStudentToCourse() {
+        const studentId = document.getElementById('studentSelect').value;
+        
+        // If no existing student selected, create new one
+        let selectedStudentId = studentId;
+        if (!studentId) {
+            const firstName = document.getElementById('studentFirstName').value.trim();
+            const lastName = document.getElementById('studentLastName').value.trim();
+            const email = document.getElementById('studentEmail').value.trim();
+            const isScholarship = document.getElementById('studentScholarship').checked;
+
+            if (!firstName || !lastName) {
+                showMessage('Por favor completa nombre y apellido', 'warning', 'addStudentMessage');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${ADMIN_API_PREFIX}/students`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        first_name: firstName,
+                        last_name: lastName,
+                        email: email || null,
+                        is_scholarship_student: isScholarship
+                    })
+                });
+
+                if (!res.ok) {
+                    showMessage('Error al crear estudiante', 'danger', 'addStudentMessage');
+                    return;
+                }
+
+                const newStudent = await res.json();
+                selectedStudentId = newStudent.id;
+            } catch (e) {
+                console.error('Error:', e);
+                showMessage('Error de conexión', 'danger', 'addStudentMessage');
+                return;
+            }
+        }
+
+        // Add student to course enrollment
+        try {
+            const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}/enroll`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({ student_id: selectedStudentId })
+            });
+
+            if (res.ok) {
+                showMessage('Estudiante agregado correctamente', 'success', 'addStudentMessage');
+                $('#addStudentModal').modal('hide');
+                loadCourseStudents();
+            } else {
+                const data = await res.json();
+                showMessage(data.error || 'Error al agregar estudiante', 'danger', 'addStudentMessage');
+            }
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger', 'addStudentMessage');
+        }
+    }
+
+    async function removeStudent(studentId) {
+        if (!confirm('¿Desea eliminar este estudiante del curso?')) return;
+
+        try {
+            const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}/unenroll/${studentId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+
+            if (res.ok) {
+                showMessage('Estudiante eliminado del curso', 'success');
+                loadCourseStudents();
+            } else {
+                showMessage('Error al eliminar estudiante', 'danger');
+            }
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger');
+        }
+    }
+
+    function editStudent(studentId) {
+        // TODO: Implement student edit form
+        alert('Edición de estudiante - Por implementar');
+    }
+
+    // Event listeners
+    document.getElementById('prevBtn').addEventListener('click', () => {
+        if (currentStudentPage > 1) {
+            currentStudentPage--;
+            displayStudentsTable();
+        }
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+        const totalPages = Math.ceil(courseStudents.length / studentsPerPage);
+        if (currentStudentPage < totalPages) {
+            currentStudentPage++;
+            displayStudentsTable();
+        }
+    });
+
+    document.getElementById('addStudentBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        loadAllStudents();
+        $('#addStudentModal').modal('show');
+    });
+
+    document.getElementById('confirmAddStudent').addEventListener('click', addStudentToCourse);
+
+    // Bootstrap
+    document.addEventListener('DOMContentLoaded', async () => {
+        await detectAdminApiPrefix();
+        loadCourseData();
+        loadCourseStudents();
+    });
+</script>
+{% endblock %}

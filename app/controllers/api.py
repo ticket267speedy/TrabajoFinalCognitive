@@ -31,8 +31,8 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 
 # Importaciones pesadas movidas a importación perezosa dentro de funciones
 # para evitar que errores de dependencias bloqueen el arranque de la app.
-from ..models import Student, Alert
-from ..models import User, Course, Enrollment, ClassSession, AttendanceSummary, AdvisorCourseLink
+from ..models import Student, Alert, Attendance
+from ..models import User, Course, Enrollment, AdvisorCourseLink
 import os
 from werkzeug.utils import secure_filename
 import base64
@@ -62,10 +62,10 @@ def admin_attendance_face():
     if not course_id:
         return jsonify({"error": "course_id requerido"}), 400
         
-    # Verificar sesión activa
-    active_session = ClassSession.query.filter_by(course_id=course_id, status="active").first()
-    if not active_session:
-        return jsonify({"error": "No hay sesión activa para este curso"}), 400
+    # Validar que el curso existe
+    course = Course.query.get(course_id)
+    if not course:
+        return jsonify({"error": "Curso no encontrado"}), 404
         
     # Cargar modelo
     known_encodings, known_names = cargar_modelo()
@@ -779,6 +779,100 @@ def admin_courses_delete(course_id: int):
     return jsonify({"status": "deleted"}), 200
 
 
+# --- Admin: Estudiantes por Curso (Enrollments) ---
+
+@api_bp.get("/admin/courses/<int:course_id>/students")
+@jwt_required()
+def admin_course_students_list(course_id: int):
+    """Obtener lista de estudiantes en un curso"""
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    admin_id = _normalize_identity(get_jwt_identity())
+    
+    # Verificar que el admin sea propietario del curso
+    course = Course.query.get_or_404(course_id)
+    if course.admin_id != admin_id:
+        return jsonify({"error": "No autorizado"}), 403
+    
+    # Obtener estudiantes inscritos en el curso
+    enrollments = Enrollment.query.filter_by(course_id=course_id).all()
+    students = []
+    
+    for enrollment in enrollments:
+        student = Student.query.get(enrollment.student_id)
+        if student:
+            students.append({
+                "id": student.id,
+                "first_name": student.first_name,
+                "last_name": student.last_name,
+                "email": student.email,
+                "is_scholarship_student": student.is_scholarship_student
+            })
+    
+    return jsonify(students), 200
+
+
+@api_bp.post("/admin/courses/<int:course_id>/enroll")
+@jwt_required()
+def admin_course_enroll_student(course_id: int):
+    """Agregar estudiante a un curso"""
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    admin_id = _normalize_identity(get_jwt_identity())
+    
+    # Verificar que el admin sea propietario del curso
+    course = Course.query.get_or_404(course_id)
+    if course.admin_id != admin_id:
+        return jsonify({"error": "No autorizado"}), 403
+    
+    data = request.get_json(silent=True) or {}
+    student_id = data.get("student_id")
+    
+    if not student_id:
+        return jsonify({"error": "ID del estudiante requerido"}), 400
+    
+    # Verificar que el estudiante exista
+    student = Student.query.get_or_404(student_id)
+    
+    # Verificar si ya está inscrito
+    existing = Enrollment.query.filter_by(course_id=course_id, student_id=student_id).first()
+    if existing:
+        return jsonify({"error": "Estudiante ya inscrito en este curso"}), 400
+    
+    # Crear enrollment
+    enrollment = Enrollment(course_id=course_id, student_id=student_id)
+    db.session.add(enrollment)
+    db.session.commit()
+    
+    return jsonify({
+        "id": enrollment.id,
+        "course_id": course_id,
+        "student_id": student_id
+    }), 201
+
+
+@api_bp.delete("/admin/courses/<int:course_id>/unenroll/<int:student_id>")
+@jwt_required()
+def admin_course_unenroll_student(course_id: int, student_id: int):
+    """Eliminar estudiante de un curso"""
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    admin_id = _normalize_identity(get_jwt_identity())
+    
+    # Verificar que el admin sea propietario del curso
+    course = Course.query.get_or_404(course_id)
+    if course.admin_id != admin_id:
+        return jsonify({"error": "No autorizado"}), 403
+    
+    # Obtener el enrollment
+    enrollment = Enrollment.query.filter_by(course_id=course_id, student_id=student_id).first_or_404()
+    
+    db.session.delete(enrollment)
+    db.session.commit()
+    
+    return jsonify({"status": "deleted"}), 200
+
+
 # --- Admin: Control de sesiones ---
 
 @api_bp.post("/admin/courses/<int:course_id>/session/start")
@@ -790,15 +884,8 @@ def admin_session_start(course_id: int):
     course = Course.query.get_or_404(course_id)
     if course.admin_id != admin_id:
         return jsonify({"error": "No autorizado"}), 403
-    active = ClassSession.query.filter_by(course_id=course_id, status="active").first()
-    if active:
-        return jsonify({"error": "Ya existe una sesión activa", "session_id": active.id}), 400
-    # Create new session with current timestamp
-    from datetime import datetime
-    sess = ClassSession(course_id=course_id, status="active", start_time=datetime.utcnow())
-    db.session.add(sess)
-    db.session.commit()
-    return jsonify({"session_id": sess.id, "status": "active"}), 201
+    # La sesión se inicia implícitamente cuando se registra la asistencia
+    return jsonify({"course_id": course_id, "status": "session_started"}), 201
 
 
 @api_bp.post("/admin/courses/<int:course_id>/session/end")
@@ -810,15 +897,8 @@ def admin_session_end(course_id: int):
     course = Course.query.get_or_404(course_id)
     if course.admin_id != admin_id:
         return jsonify({"error": "No autorizado"}), 403
-    active = ClassSession.query.filter_by(course_id=course_id, status="active").first()
-    if not active:
-        return jsonify({"error": "No hay sesión activa"}), 400
-    # End session with current timestamp
-    from datetime import datetime
-    active.end_time = datetime.utcnow()
-    active.status = "finished"
-    db.session.commit()
-    return jsonify({"session_id": active.id, "status": "finished"}), 200
+    # La sesión se cierra implícitamente en el sistema
+    return jsonify({"course_id": course_id, "status": "session_ended"}), 200
 
 
 @api_bp.get("/admin/courses/<int:course_id>/session/active")
@@ -843,38 +923,42 @@ def admin_session_active(course_id: int):
 def admin_summaries_list():
     if not _require_role("admin"):
         return jsonify({"error": "No autorizado"}), 401
-    session_id = request.args.get("session_id", type=int)
-    q = AttendanceSummary.query
-    if session_id:
-        q = q.filter_by(session_id=session_id)
-    summaries = q.all()
+    course_id = request.args.get("course_id", type=int)
+    from datetime import date
+    q = Attendance.query
+    if course_id:
+        q = q.filter_by(course_id=course_id)
+    # Obtener solo registros de hoy
+    today = date.today()
+    q = q.filter(db.func.date(Attendance.created_at) == today)
+    records = q.all()
     items = [
         {
             "id": a.id,
-            "session_id": a.session_id,
+            "course_id": a.course_id,
             "student_id": a.student_id,
-            "presence_percentage": a.presence_percentage,
-            "is_manual_override": a.is_manual_override,
+            "date": a.date.isoformat(),
+            "status": a.status,
+            "entry_time": str(a.entry_time) if a.entry_time else None,
+            "exit_time": str(a.exit_time) if a.exit_time else None,
         }
-        for a in summaries
+        for a in records
     ]
     return jsonify({"items": items}), 200
 
 
-@api_bp.patch("/admin/summaries/<int:summary_id>")
+@api_bp.patch("/admin/summaries/<int:attendance_id>")
 @jwt_required()
-def admin_summary_update(summary_id: int):
+def admin_summary_update(attendance_id: int):
     if not _require_role("admin"):
         return jsonify({"error": "No autorizado"}), 401
-    a = AttendanceSummary.query.get_or_404(summary_id)
+    a = Attendance.query.get_or_404(attendance_id)
     data = request.get_json(silent=True) or {}
-    if "presence_percentage" in data:
-        try:
-            a.presence_percentage = float(data.get("presence_percentage"))
-        except Exception:
-            return jsonify({"error": "presence_percentage inválido"}), 400
-    if "is_manual_override" in data:
-        a.is_manual_override = bool(data.get("is_manual_override"))
+    if "status" in data:
+        valid_statuses = ['presente', 'tardanza', 'falta', 'salida_repentina']
+        if data.get("status") not in valid_statuses:
+            return jsonify({"error": f"Status debe ser uno de: {','.join(valid_statuses)}"}), 400
+        a.status = data.get("status")
     db.session.commit()
     return jsonify({"status": "updated"}), 200
 
@@ -1379,3 +1463,38 @@ def handle_save_frame():
         return jsonify({"msg": "Imagen guardada", "path": path}), 200
     except Exception as e:
         return jsonify({"msg": f"Error al guardar: {str(e)}"}), 500
+
+
+@api_bp.get("/admin/users")
+@jwt_required()
+def admin_users_list():
+    """List users by role (admin, advisor, student)"""
+    if not _require_role("admin"):
+        return jsonify({"msg": "Acceso denegado"}), 403
+    
+    role = request.args.get('role', 'advisor')  # Default to advisor
+    
+    try:
+        query = User.query
+        
+        if role == 'advisor':
+            query = query.filter_by(role='advisor')
+        elif role == 'student':
+            query = query.filter_by(role='student')
+        elif role == 'admin':
+            query = query.filter_by(role='admin')
+        
+        users = query.all()
+        
+        return jsonify({
+            'data': [{
+                'id': u.id,
+                'first_name': u.first_name,
+                'last_name': u.last_name,
+                'email': u.email,
+                'role': u.role,
+                'created_at': u.created_at.isoformat() if hasattr(u, 'created_at') else None
+            } for u in users]
+        }), 200
+    except Exception as e:
+        return jsonify({"msg": f"Error: {str(e)}"}), 500

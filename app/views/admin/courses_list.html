@@ -1,0 +1,188 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestión de Cursos - CogniPass{% endblock %}
+
+{% block content %}
+
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Gestión de Cursos</h1>
+    <a href="/admin/courses/create" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <i class="fas fa-plus fa-sm text-white-50"></i> Crear Curso
+    </a>
+</div>
+
+<!-- Error/Success Messages -->
+<div id="messageContainer"></div>
+
+<!-- Cursos Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-table"></i> Tabla de Cursos
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="coursesTable">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre del Curso</th>
+                        <th>Profesor</th>
+                        <th>Estudiantes</th>
+                        <th>Sesiones</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="coursesTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Cargando cursos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="coursesPagination" class="btn-group mt-3" aria-label="Paginación"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let ADMIN_API_PREFIX = '/api/admin';
+    let coursesPerPage = 10;
+    let currentCoursesPage = 1;
+    let allCourses = [];
+
+    function authHeaders() {
+        const token = localStorage.getItem('access_token');
+        return {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    async function detectAdminApiPrefix() {
+        const prefixes = ['/api/admin', '/admin/api'];
+        for (const prefix of prefixes) {
+            try {
+                const res = await fetch(`${prefix}/profile`, { headers: authHeaders() });
+                if (res.ok) {
+                    ADMIN_API_PREFIX = prefix;
+                    return;
+                }
+            } catch (e) { }
+        }
+    }
+
+    function showMessage(message, type = 'success') {
+        const container = document.getElementById('messageContainer');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.setAttribute('role', 'alert');
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+        container.innerHTML = '';
+        container.appendChild(alert);
+        setTimeout(() => alert.remove(), 5000);
+    }
+
+    async function loadCourses() {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                document.getElementById('coursesTableBody').innerHTML = 
+                    '<tr><td colspan="6" class="text-center"><a href="/login">Por favor inicia sesión</a></td></tr>';
+                return;
+            }
+
+            await detectAdminApiPrefix();
+            const res = await fetch(`${ADMIN_API_PREFIX}/courses`, { headers: authHeaders() });
+            
+            if (!res.ok) {
+                showMessage('Error al cargar cursos', 'danger');
+                return;
+            }
+
+            const data = await res.json();
+            allCourses = Array.isArray(data) ? data : data.items || data.data || [];
+            displayCoursesTable();
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger');
+        }
+    }
+
+    async function displayCoursesTable() {
+        const tbody = document.getElementById('coursesTableBody');
+        
+        if (allCourses.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay cursos. <a href="/admin/courses/create">Crear uno</a></td></tr>';
+            return;
+        }
+
+        const start = (currentCoursesPage - 1) * coursesPerPage;
+        const end = start + coursesPerPage;
+        const paginatedCourses = allCourses.slice(start, end);
+
+        tbody.innerHTML = paginatedCourses.map(course => `
+            <tr>
+                <td>${course.id}</td>
+                <td>
+                    <a href="/admin/courses/${course.id}/students" 
+                       class="text-primary font-weight-bold">
+                        ${course.name}
+                    </a>
+                </td>
+                <td>${course.admin?.first_name || ''} ${course.admin?.last_name || ''}</td>
+                <td><span class="badge badge-info">${course.enrollments?.length || 0}</span></td>
+                <td><span class="badge badge-secondary">${course.class_sessions?.length || 0}</span></td>
+                <td>
+                    <a href="/admin/courses/${course.id}/edit"
+                       class="btn btn-sm btn-warning" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="/admin/courses/${course.id}/delete"
+                       class="btn btn-sm btn-danger" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </td>
+            </tr>
+        `).join('');
+
+        displayPagination(allCourses.length);
+    }
+
+    function displayPagination(totalItems) {
+        const paginationContainer = document.getElementById('coursesPagination');
+        const totalPages = Math.ceil(totalItems / coursesPerPage);
+        
+        if (totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+
+        paginationContainer.innerHTML = '';
+        
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.className = `btn btn-outline-primary ${i === currentCoursesPage ? 'active' : ''}`;
+            btn.textContent = i;
+            btn.addEventListener('click', () => {
+                currentCoursesPage = i;
+                displayCoursesTable();
+            });
+            paginationContainer.appendChild(btn);
+        }
+    }
+
+    // Bootstrap
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCourses();
+    });
+</script>
+{% endblock %}

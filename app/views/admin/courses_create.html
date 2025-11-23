@@ -1,0 +1,145 @@
+{% extends "layout.html" %}
+
+{% block title %}Crear Curso - CogniPass{% endblock %}
+
+{% block content %}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h3 mb-4 text-gray-800">Crear Nuevo Curso</h1>
+        
+        <!-- Error Messages -->
+        <div id="messageContainer"></div>
+
+        <!-- Course Form -->
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <form id="courseForm">
+                    <div class="form-group">
+                        <label for="courseName">Nombre del Curso</label>
+                        <input type="text" class="form-control" id="courseName" name="name" required 
+                               placeholder="Ej: Matemáticas Avanzadas">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="courseAdmin">Profesor Asignado</label>
+                        <select class="form-control" id="courseAdmin" name="admin_id" required>
+                            <option value="">-- Seleccionar profesor --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Crear Curso
+                        </button>
+                        <a href="/admin/courses" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let ADMIN_API_PREFIX = '/api/admin';
+
+    function authHeaders() {
+        const token = localStorage.getItem('access_token');
+        return {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    function showMessage(message, type = 'success') {
+        const container = document.getElementById('messageContainer');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        `;
+        container.innerHTML = '';
+        container.appendChild(alert);
+        setTimeout(() => alert.remove(), 5000);
+    }
+
+    async function detectAdminApiPrefix() {
+        const prefixes = ['/api/admin', '/admin/api'];
+        for (const prefix of prefixes) {
+            try {
+                const res = await fetch(`${prefix}/profile`, { headers: authHeaders() });
+                if (res.ok) {
+                    ADMIN_API_PREFIX = prefix;
+                    return;
+                }
+            } catch (e) { }
+        }
+    }
+
+    async function loadAdmins() {
+        try {
+            await detectAdminApiPrefix();
+            const res = await fetch(`${ADMIN_API_PREFIX}/users?role=admin`, { headers: authHeaders() });
+            
+            if (!res.ok) {
+                showMessage('Error al cargar profesores', 'danger');
+                return;
+            }
+
+            const users = await res.json();
+            const adminSelect = document.getElementById('courseAdmin');
+            const admins = Array.isArray(users) ? users : users.data || [];
+            
+            admins.forEach(admin => {
+                const option = document.createElement('option');
+                option.value = admin.id;
+                option.textContent = `${admin.first_name || ''} ${admin.last_name || ''} (${admin.email})`;
+                adminSelect.appendChild(option);
+            });
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger');
+        }
+    }
+
+    document.getElementById('courseForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            name: document.getElementById('courseName').value,
+            admin_id: parseInt(document.getElementById('courseAdmin').value)
+        };
+
+        try {
+            const res = await fetch(`${ADMIN_API_PREFIX}/courses`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(formData)
+            });
+
+            const data = await res.json();
+            
+            if (res.ok) {
+                showMessage('Curso creado correctamente', 'success');
+                setTimeout(() => {
+                    window.location.href = "/admin/courses";
+                }, 1500);
+            } else {
+                showMessage(data.error || 'Error al crear curso', 'danger');
+            }
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger');
+        }
+    });
+
+    // Load admins on page load
+    document.addEventListener('DOMContentLoaded', loadAdmins);
+</script>
+{% endblock %}
