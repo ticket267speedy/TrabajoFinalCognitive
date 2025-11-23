@@ -13,5 +13,10 @@ class Student(db.Model):
     profile_photo_url = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
+    # Relaciones
+    enrollments = db.relationship('Enrollment', backref='student', lazy=True, cascade='all, delete-orphan')
+    attendances = db.relationship('Attendance', backref='student', lazy=True, cascade='all, delete-orphan')
+    alerts = db.relationship('Alert', backref='student', lazy=True, cascade='all, delete-orphan')
+
     def __repr__(self):
         return f'<Student {self.id} - {self.first_name} {self.last_name}>'

@@ -305,7 +305,7 @@
                     msgEl.className = 'alert alert-success mt-3';
                     setTimeout(() => {
                         bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
-                        loadStudents();
+                        window.location.href = '/admin/students';
                     }, 800);
                     return;
                 }

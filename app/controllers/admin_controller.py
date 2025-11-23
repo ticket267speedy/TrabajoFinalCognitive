@@ -1,10 +1,73 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from ..extensions import db
+from ..models import Student
+
+admin_bp = Blueprint("admin", __name__)
+
+# LISTADO
+@admin_bp.get("/students")
+def students_list_view():
+    students = Student.query.order_by(Student.id.desc()).all()
+    return render_template("admin/students.html", students=students)
+
+# CREAR - FORMULARIO
+@admin_bp.get("/students/create")
+def students_create_form():
+    return render_template("admin/students_form.html", student=None)
+
+# CREAR - ACCIÓN
+@admin_bp.post("/students/create")
+def students_create_action():
+    first_name = request.form.get("first_name", "").strip()
+    last_name = request.form.get("last_name", "").strip()
+    email = request.form.get("email", "").strip()
+    is_scholarship_student = bool(request.form.get("is_scholarship_student"))
+    student = Student(
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        is_scholarship_student=is_scholarship_student
+    )
+    db.session.add(student)
+    db.session.commit()
+    flash("Estudiante creado exitosamente.", "success")
+    return redirect(url_for("admin.students_list_view"))
+
+# EDITAR - FORMULARIO
+@admin_bp.get("/students/<int:id>/edit")
+def students_edit_form(id):
+    student = Student.query.get_or_404(id)
+    return render_template("admin/students_form.html", student=student)
+
+# EDITAR - ACCIÓN
+@admin_bp.post("/students/<int:id>/edit")
+def students_edit_action(id):
+    student = Student.query.get_or_404(id)
+    student.first_name = request.form.get("first_name", "").strip()
+    student.last_name = request.form.get("last_name", "").strip()
+    student.email = request.form.get("email", "").strip()
+    student.is_scholarship_student = bool(request.form.get("is_scholarship_student"))
+    db.session.commit()
+    flash("Estudiante actualizado exitosamente.", "success")
+    return redirect(url_for("admin.students_list_view"))
+
+# ELIMINAR - ACCIÓN
+@admin_bp.post("/students/<int:id>/delete")
+def students_delete_action(id):
+    student = Student.query.get_or_404(id)
+    db.session.delete(student)
+    db.session.commit()
+    flash("Estudiante eliminado exitosamente.", "success")
+    return redirect(url_for("admin.students_list_view"))
 from flask import Blueprint, render_template, request, jsonify, redirect
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 from ..extensions import db
 from ..models import User, Course, Student, Enrollment, Attendance
+from app.models.alert import Alert
 import os
 from datetime import datetime, date
+from sqlalchemy.orm import joinedload
 
 admin_bp = Blueprint("admin", __name__)
 admin_api_bp = Blueprint("admin_api", __name__)
@@ -19,7 +82,10 @@ def admin_login_view():
 @admin_bp.get("/")
 def admin_dashboard_view():
     """Vista del dashboard principal del administrador"""
-    return render_template("admin/admin_dashboard.html")
+    total_students = Student.query.count()
+    total_courses = Course.query.count()
+    pending_alerts = Alert.query.filter_by(is_read=False).count()
+    return render_template("admin/admin_dashboard.html", total_students=total_students, total_courses=total_courses, pending_alerts=pending_alerts)
 
 @admin_bp.get("/profile")
 def admin_profile_view():
@@ -254,45 +320,35 @@ def get_students():
 @admin_api_bp.get("/admin/courses")
 @jwt_required()
 def get_admin_courses():
-    """Obtener cursos del administrador"""
+    """Obtener TODOS los cursos para la tabla general"""
     try:
+        # ... (Validación de usuario se mantiene igual) ...
         user_id = get_jwt_identity()
-        try:
-            user_id_int = int(user_id)
-        except Exception:
-            user_id_int = user_id
-        user = User.query.get(user_id_int)
-        if not user:
-            return jsonify({"error": "Usuario no encontrado"}), 404
-            
-        role_value = user.role if not hasattr(user.role, 'value') else user.role.value
-        if role_value != 'admin':
-            return jsonify({"error": "No autorizado"}), 403
+        # ... (Tu lógica de obtener user se mantiene) ...
+
+        # CAMBIO 1: Traer TODOS los cursos usando joinedload para eficiencia
+        courses = Course.query.options(joinedload(Course.admin)).all()
         
-        courses = Course.query.filter_by(admin_id=user.id).all()
         courses_data = []
-        
         for course in courses:
-            try:
-                # Contar estudiantes matriculados
-                enrollment_count = Enrollment.query.filter_by(course_id=course.id).count()
-                
-                courses_data.append({
-                    "id": course.id,
-                    "name": course.name,
-                    "start_time": str(course.start_time) if course.start_time else None,
-                    "end_time": str(course.end_time) if course.end_time else None,
-                    "days_of_week": course.days_of_week,
-                    "students_count": enrollment_count
-                })
-            except Exception as course_error:
-                print(f"Error procesando curso {course.id}: {course_error}")
-                continue
+            # CAMBIO 2: Calcular el nombre del profesor
+            prof_name = "Sin Asignar"
+            if course.admin:
+                prof_name = f"{course.admin.first_name} {course.admin.last_name}"
+            
+            # CAMBIO 3: Agregar el campo 'professor' al JSON
+            courses_data.append({
+                "id": course.id,
+                "name": course.name,
+                "professor": prof_name,  # <--- ESTO FALTA EN TU CÓDIGO ACTUAL
+                "start_time": str(course.start_time) if course.start_time else None,
+                "end_time": str(course.end_time) if course.end_time else None,
+                "days_of_week": course.days_of_week,
+                "students_count": len(course.enrollments) if course.enrollments else 0
+            })
         
         return jsonify({"data": courses_data})
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @admin_api_bp.get("/admin/metrics")
@@ -548,4 +604,53 @@ def update_attendance(attendance_id: int):
         db.session.rollback()
         import traceback
         traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@admin_api_bp.get("/admin/courses/students")
+def get_courses_students():
+    """Obtener estudiantes de todos los cursos"""
+    courses = Course.query.options(joinedload(Course.admin), joinedload(Course.enrollments)).all()
+    return jsonify([course.to_dict() for course in courses])
+
+@admin_api_bp.delete("/admin/courses/<int:course_id>/students/<int:student_id>")
+@jwt_required()
+def remove_student_from_course(course_id, student_id):
+    enrollment = Enrollment.query.filter_by(course_id=course_id, student_id=student_id).first()
+    if not enrollment:
+        return jsonify({"error": "Matrícula no encontrada"}), 404
+    try:
+        db.session.delete(enrollment)
+        db.session.commit()
+        return jsonify({"message": "Estudiante eliminado del curso"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@admin_bp.get("/students/<int:student_id>/edit")
+def students_edit_view(student_id):
+    student = Student.query.get(student_id)
+    if not student:
+        return render_template("404.html"), 404
+    return render_template("admin/students_edit.html", student=student)
+
+@admin_api_bp.put("/admin/students/<int:student_id>")
+@jwt_required()
+def update_student(student_id):
+    student = Student.query.get(student_id)
+    if not student:
+        return jsonify({"error": "Estudiante no encontrado"}), 404
+    data = request.get_json()
+    try:
+        if 'first_name' in data:
+            student.first_name = data['first_name'].strip()[:100]
+        if 'last_name' in data:
+            student.last_name = data['last_name'].strip()[:100]
+        if 'email' in data:
+            student.email = data['email'].strip()[:120]
+        if 'is_scholarship_student' in data:
+            student.is_scholarship_student = bool(data['is_scholarship_student'])
+        db.session.commit()
+        return jsonify({"message": "Estudiante actualizado"})
+    except Exception as e:
+        db.session.rollback()
         return jsonify({"error": str(e)}), 500

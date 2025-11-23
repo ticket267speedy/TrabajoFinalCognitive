@@ -18,5 +18,8 @@ class User(db.Model):
     )
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
+    # Relación: Un usuario puede dictar muchos cursos
+    courses = db.relationship('Course', backref='admin', lazy=True)
+
     def __repr__(self):
         return f'<User {self.email}>'

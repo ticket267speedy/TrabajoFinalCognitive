@@ -32,9 +32,8 @@ class AdvisorCourseLink(db.Model):
     accepted_at = db.Column(db.DateTime(timezone=True), nullable=True)
     rejected_reason = db.Column(db.String(255), nullable=True)
 
-    # Relaciones
-    course = db.relationship('Course')
-    advisor = db.relationship('User')
+    # Relaciones bidireccionales
+    # Ya se definen en Course.advisor_links y User.advisor_links con backrefs
 
     # Evita duplicados del mismo asesor en el mismo curso
     __table_args__ = (
