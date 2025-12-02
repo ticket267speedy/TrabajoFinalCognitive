@@ -1,65 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from ..extensions import db
-from ..models import Student
-
-admin_bp = Blueprint("admin", __name__)
-
-# LISTADO
-@admin_bp.get("/students")
-def students_list_view():
-    students = Student.query.order_by(Student.id.desc()).all()
-    return render_template("admin/students.html", students=students)
-
-# CREAR - FORMULARIO
-@admin_bp.get("/students/create")
-def students_create_form():
-    return render_template("admin/students_form.html", student=None)
-
-# CREAR - ACCIÓN
-@admin_bp.post("/students/create")
-def students_create_action():
-    first_name = request.form.get("first_name", "").strip()
-    last_name = request.form.get("last_name", "").strip()
-    email = request.form.get("email", "").strip()
-    is_scholarship_student = bool(request.form.get("is_scholarship_student"))
-    student = Student(
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        is_scholarship_student=is_scholarship_student
-    )
-    db.session.add(student)
-    db.session.commit()
-    flash("Estudiante creado exitosamente.", "success")
-    return redirect(url_for("admin.students_list_view"))
-
-# EDITAR - FORMULARIO
-@admin_bp.get("/students/<int:id>/edit")
-def students_edit_form(id):
-    student = Student.query.get_or_404(id)
-    return render_template("admin/students_form.html", student=student)
-
-# EDITAR - ACCIÓN
-@admin_bp.post("/students/<int:id>/edit")
-def students_edit_action(id):
-    student = Student.query.get_or_404(id)
-    student.first_name = request.form.get("first_name", "").strip()
-    student.last_name = request.form.get("last_name", "").strip()
-    student.email = request.form.get("email", "").strip()
-    student.is_scholarship_student = bool(request.form.get("is_scholarship_student"))
-    db.session.commit()
-    flash("Estudiante actualizado exitosamente.", "success")
-    return redirect(url_for("admin.students_list_view"))
-
-# ELIMINAR - ACCIÓN
-@admin_bp.post("/students/<int:id>/delete")
-def students_delete_action(id):
-    student = Student.query.get_or_404(id)
-    db.session.delete(student)
-    db.session.commit()
-    flash("Estudiante eliminado exitosamente.", "success")
-    return redirect(url_for("admin.students_list_view"))
-from flask import Blueprint, render_template, request, jsonify, redirect
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 from ..extensions import db
@@ -124,20 +63,240 @@ def course_students_view(course_id: int):
     """Vista de estudiantes del curso"""
     return render_template("admin/course_students.html", course_id=course_id)
 
+# ==================== ESTUDIANTES ====================
+
 @admin_bp.get("/students")
 def students_view():
     """Vista de listado de estudiantes"""
     return render_template("admin/students.html")
+
+@admin_bp.get("/students/create")
+def students_create_view():
+    """Vista de crear estudiante - muestra formulario"""
+    return render_template("admin/students_create.html")
+
+@admin_bp.post("/students/create")
+def students_create_action():
+    """Procesa la creación de un nuevo estudiante"""
+    try:
+        first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
+        email = request.form.get("email", "").strip()
+        is_scholarship_student = bool(request.form.get("is_scholarship_student"))
+        
+        if not first_name or not last_name or not email:
+            flash("Todos los campos son requeridos.", "danger")
+            return redirect(url_for("admin.students_create_view"))
+        
+        student = Student(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            is_scholarship_student=is_scholarship_student
+        )
+        db.session.add(student)
+        db.session.commit()
+        flash("Estudiante creado exitosamente.", "success")
+        return redirect(url_for("admin.students_view"))
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al crear estudiante: {str(e)}", "danger")
+        return redirect(url_for("admin.students_create_view"))
+
+@admin_bp.get("/students/<int:student_id>/edit")
+def students_edit_view(student_id):
+    """Vista de editar estudiante - muestra formulario con datos pre-cargados"""
+    student = Student.query.get_or_404(student_id)
+    return render_template("admin/students_edit.html", student=student)
+
+@admin_bp.post("/students/<int:student_id>/edit")
+def students_edit_action(student_id):
+    """Procesa la actualización de un estudiante"""
+    try:
+        student = Student.query.get_or_404(student_id)
+        
+        first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
+        email = request.form.get("email", "").strip()
+        is_scholarship_student = bool(request.form.get("is_scholarship_student"))
+        
+        if not first_name or not last_name or not email:
+            flash("Todos los campos son requeridos.", "danger")
+            return redirect(url_for("admin.students_edit_view", student_id=student_id))
+        
+        student.first_name = first_name
+        student.last_name = last_name
+        student.email = email
+        student.is_scholarship_student = is_scholarship_student
+        db.session.commit()
+        flash("Estudiante actualizado exitosamente.", "success")
+        return redirect(url_for("admin.students_view"))
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al actualizar estudiante: {str(e)}", "danger")
+        return redirect(url_for("admin.students_edit_view", student_id=student_id))
+
+@admin_bp.post("/students/<int:student_id>/delete")
+def students_delete_action(student_id):
+    """Procesa la eliminación de un estudiante"""
+    try:
+        student = Student.query.get_or_404(student_id)
+        db.session.delete(student)
+        db.session.commit()
+        flash("Estudiante eliminado exitosamente.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al eliminar estudiante: {str(e)}", "danger")
+    return redirect(url_for("admin.students_view"))
 
 @admin_bp.get("/class-session")
 def class_session_view():
     """Vista de sesiones de clase"""
     return render_template("admin/class-session.html")
 
+# ==================== ASISTENCIA ====================
+
 @admin_bp.get("/attendance")
 def attendance_view():
-    """Vista de resumen de asistencia"""
+    """Vista de resumen de asistencia - muestra registros de TODOS los cursos del admin"""
     return render_template("admin/attendance.html")
+
+@admin_bp.get("/attendance/create")
+def attendance_create_view():
+    """Vista de crear nuevo registro de asistencia - muestra formulario vacío"""
+    # Obtener todos los cursos y estudiantes para los selectores
+    # Nota: En una app real, filtrarías por usuario logueado
+    courses = Course.query.all()
+    students = Student.query.all()
+    return render_template("admin/attendance_create.html", courses=courses, students=students)
+
+@admin_bp.post("/attendance/create")
+def attendance_create_action():
+    """Procesa la creación de un nuevo registro de asistencia"""
+    try:
+        student_id = request.form.get("student_id", "").strip()
+        course_id = request.form.get("course_id", "").strip()
+        date_str = request.form.get("date", "").strip()
+        entry_time = request.form.get("entry_time", "").strip()
+        exit_time = request.form.get("exit_time", "").strip()
+        status = request.form.get("status", "").strip()
+        
+        # Validaciones
+        if not student_id or not course_id or not date_str or not status:
+            flash("Los campos Estudiante, Curso, Fecha y Estado son requeridos.", "danger")
+            return redirect(url_for("admin.attendance_create_view"))
+        
+        # Validar status
+        valid_statuses = ['presente', 'tardanza', 'falta', 'salida_repentina']
+        if status not in valid_statuses:
+            flash(f"Estado inválido. Debe ser uno de: {', '.join(valid_statuses)}", "danger")
+            return redirect(url_for("admin.attendance_create_view"))
+        
+        try:
+            student_id = int(student_id)
+            course_id = int(course_id)
+        except Exception:
+            flash("ID de estudiante o curso inválido.", "danger")
+            return redirect(url_for("admin.attendance_create_view"))
+        
+        # Verificar que el estudiante existe
+        student = Student.query.get(student_id)
+        if not student:
+            flash("Estudiante no encontrado.", "danger")
+            return redirect(url_for("admin.attendance_create_view"))
+        
+        # Verificar que el curso existe
+        course = Course.query.get(course_id)
+        if not course:
+            flash("Curso no encontrado.", "danger")
+            return redirect(url_for("admin.attendance_create_view"))
+        
+        # Crear el registro de asistencia
+        from datetime import datetime as dt
+        try:
+            attendance_date = dt.strptime(date_str, "%Y-%m-%d").date()
+        except Exception:
+            flash("Formato de fecha inválido. Use YYYY-MM-DD.", "danger")
+            return redirect(url_for("admin.attendance_create_view"))
+        
+        attendance = Attendance(
+            student_id=student_id,
+            course_id=course_id,
+            date=attendance_date,
+            entry_time=entry_time if entry_time else None,
+            exit_time=exit_time if exit_time else None,
+            status=status
+        )
+        db.session.add(attendance)
+        db.session.commit()
+        flash("Registro de asistencia creado exitosamente.", "success")
+        return redirect(url_for("admin.attendance_view"))
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al crear registro de asistencia: {str(e)}", "danger")
+        return redirect(url_for("admin.attendance_create_view"))
+
+@admin_bp.get("/attendance/<int:attendance_id>/edit")
+def attendance_edit_view(attendance_id):
+    """Vista de editar asistencia - muestra formulario con datos pre-cargados"""
+    attendance = Attendance.query.get_or_404(attendance_id)
+    # Verificar que el registro de asistencia pertenece a un curso del admin logueado
+    # (nota: en una app real usaríamos JWT aquí, pero por ahora lo dejamos así)
+    return render_template("admin/attendance_edit.html", attendance=attendance)
+
+@admin_bp.post("/attendance/<int:attendance_id>/edit")
+def attendance_edit_action(attendance_id):
+    """Procesa la actualización de un registro de asistencia"""
+    try:
+        attendance = Attendance.query.get_or_404(attendance_id)
+        
+        # Obtener valores del formulario
+        entry_time = request.form.get("entry_time", "").strip()
+        exit_time = request.form.get("exit_time", "").strip()
+        status = request.form.get("status", "").strip()
+        
+        # Validar status
+        valid_statuses = ['presente', 'tardanza', 'falta', 'salida_repentina']
+        if status not in valid_statuses:
+            flash(f"Estado inválido. Debe ser uno de: {', '.join(valid_statuses)}", "danger")
+            return redirect(url_for("admin.attendance_edit_view", attendance_id=attendance_id))
+        
+        # Actualizar campos
+        if entry_time:
+            try:
+                attendance.entry_time = entry_time
+            except Exception as e:
+                flash(f"Formato de hora de entrada inválido: {str(e)}", "danger")
+                return redirect(url_for("admin.attendance_edit_view", attendance_id=attendance_id))
+        
+        if exit_time:
+            try:
+                attendance.exit_time = exit_time
+            except Exception as e:
+                flash(f"Formato de hora de salida inválido: {str(e)}", "danger")
+                return redirect(url_for("admin.attendance_edit_view", attendance_id=attendance_id))
+        
+        attendance.status = status
+        db.session.commit()
+        flash("Registro de asistencia actualizado exitosamente.", "success")
+        return redirect(url_for("admin.attendance_view"))
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al actualizar asistencia: {str(e)}", "danger")
+        return redirect(url_for("admin.attendance_edit_view", attendance_id=attendance_id))
+
+@admin_bp.post("/attendance/<int:attendance_id>/delete")
+def attendance_delete_action(attendance_id):
+    """Procesa la eliminación de un registro de asistencia"""
+    try:
+        attendance = Attendance.query.get_or_404(attendance_id)
+        db.session.delete(attendance)
+        db.session.commit()
+        flash("Registro de asistencia eliminado exitosamente.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al eliminar asistencia: {str(e)}", "danger")
+    return redirect(url_for("admin.attendance_view"))
 
 # ==================== API ENDPOINTS ====================
 
@@ -417,7 +576,7 @@ def get_admin_metrics():
 @admin_api_bp.get("/admin/attendance")
 @jwt_required()
 def get_admin_attendance():
-    """Obtener registros de asistencia del admin"""
+    """Obtener registros de asistencia del admin de TODOS sus cursos"""
     try:
         user_id = get_jwt_identity()
         try:
@@ -432,10 +591,19 @@ def get_admin_attendance():
         if role_value != 'admin':
             return jsonify({"error": "No autorizado"}), 403
         
-        # Obtener asistencias de los cursos del admin
-        attendance_records = db.session.query(Attendance).join(Course).filter(
-            Course.admin_id == user.id
-        ).order_by(Attendance.date.desc()).limit(50).all()
+        # Obtener asistencias de TODOS los cursos del admin (sin límite)
+        # Primero obtenemos todos los cursos del admin
+        admin_courses = Course.query.filter_by(admin_id=user.id).all()
+        course_ids = [c.id for c in admin_courses]
+        
+        if not course_ids:
+            # El admin no tiene cursos
+            return jsonify({"data": []})
+        
+        # Ahora obtener asistencias de esos cursos
+        attendance_records = db.session.query(Attendance).filter(
+            Attendance.course_id.in_(course_ids)
+        ).order_by(Attendance.date.desc(), Attendance.course_id).all()
         
         attendance_data = []
         for record in attendance_records:
@@ -626,13 +794,7 @@ def remove_student_from_course(course_id, student_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-@admin_bp.get("/students/<int:student_id>/edit")
-def students_edit_view(student_id):
-    student = Student.query.get(student_id)
-    if not student:
-        return render_template("404.html"), 404
-    return render_template("admin/students_edit.html", student=student)
-
+# API para actualizar estudiante (mantiene compatibilidad con API existente)
 @admin_api_bp.put("/admin/students/<int:student_id>")
 @jwt_required()
 def update_student(student_id):

@@ -7,7 +7,7 @@
 <div class="row mb-4">
     <div class="col-md-8">
         <h1 class="h3 mb-4 text-gray-800">Crear Nuevo Curso</h1>
-        
+
         <!-- Error Messages -->
         <div id="messageContainer"></div>
 
@@ -17,8 +17,8 @@
                 <form id="courseForm">
                     <div class="form-group">
                         <label for="courseName">Nombre del Curso</label>
-                        <input type="text" class="form-control" id="courseName" name="name" required 
-                               placeholder="Ej: Matemáticas Avanzadas">
+                        <input type="text" class="form-control" id="courseName" name="name" required
+                            placeholder="Ej: Matemáticas Avanzadas">
                     </div>
 
                     <div class="form-group">
@@ -86,7 +86,7 @@
         try {
             await detectAdminApiPrefix();
             const res = await fetch(`${ADMIN_API_PREFIX}/users?role=admin`, { headers: authHeaders() });
-            
+
             if (!res.ok) {
                 showMessage('Error al cargar profesores', 'danger');
                 return;
@@ -95,7 +95,7 @@
             const users = await res.json();
             const adminSelect = document.getElementById('courseAdmin');
             const admins = Array.isArray(users) ? users : users.data || [];
-            
+
             admins.forEach(admin => {
                 const option = document.createElement('option');
                 option.value = admin.id;
@@ -110,7 +110,7 @@
 
     document.getElementById('courseForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const formData = {
             name: document.getElementById('courseName').value,
             admin_id: parseInt(document.getElementById('courseAdmin').value)
@@ -124,7 +124,7 @@
             });
 
             const data = await res.json();
-            
+
             if (res.ok) {
                 showMessage('Curso creado correctamente', 'success');
                 setTimeout(() => {

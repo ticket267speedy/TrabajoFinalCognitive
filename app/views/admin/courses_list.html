@@ -95,14 +95,14 @@
         try {
             const token = localStorage.getItem('access_token');
             if (!token) {
-                document.getElementById('coursesTableBody').innerHTML = 
+                document.getElementById('coursesTableBody').innerHTML =
                     '<tr><td colspan="6" class="text-center"><a href="/login">Por favor inicia sesión</a></td></tr>';
                 return;
             }
 
             await detectAdminApiPrefix();
             const res = await fetch(`${ADMIN_API_PREFIX}/courses`, { headers: authHeaders() });
-            
+
             if (!res.ok) {
                 showMessage('Error al cargar cursos', 'danger');
                 return;
@@ -119,7 +119,7 @@
 
     async function displayCoursesTable() {
         const tbody = document.getElementById('coursesTableBody');
-        
+
         if (allCourses.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay cursos. <a href="/admin/courses/create">Crear uno</a></td></tr>';
             return;
@@ -128,7 +128,6 @@
         const start = (currentCoursesPage - 1) * coursesPerPage;
         const end = start + coursesPerPage;
         const paginatedCourses = allCourses.slice(start, end);
-
         tbody.innerHTML = paginatedCourses.map(course => `
             <tr>
                 <td>${course.id}</td>
@@ -138,9 +137,11 @@
                         ${course.name}
                     </a>
                 </td>
-                <td>${course.admin?.first_name || ''} ${course.admin?.last_name || ''}</td>
-                <td><span class="badge badge-info">${course.enrollments?.length || 0}</span></td>
-                <td><span class="badge badge-secondary">${course.class_sessions?.length || 0}</span></td>
+                <td>${course.professor || 'Sin Asignar'}</td> 
+                
+                <td><span class="badge badge-info">${course.students_count || 0}</span></td>
+                
+                <td><span class="badge badge-secondary">${course.sessions_count || 0}</span></td>
                 <td>
                     <a href="/admin/courses/${course.id}/edit"
                        class="btn btn-sm btn-warning" title="Editar">
@@ -149,6 +150,9 @@
                     <a href="/admin/courses/${course.id}/delete"
                        class="btn btn-sm btn-danger" title="Eliminar">
                         <i class="fas fa-trash"></i>
+                    </a>
+                    <a href="/admin/courses/${course.id}/students" class="btn btn-success btn-sm" title="Ver Estudiantes">
+                         <i class="fas fa-users"></i> Ver
                     </a>
                 </td>
             </tr>
@@ -160,14 +164,14 @@
     function displayPagination(totalItems) {
         const paginationContainer = document.getElementById('coursesPagination');
         const totalPages = Math.ceil(totalItems / coursesPerPage);
-        
+
         if (totalPages <= 1) {
             paginationContainer.innerHTML = '';
             return;
         }
 
         paginationContainer.innerHTML = '';
-        
+
         for (let i = 1; i <= totalPages; i++) {
             const btn = document.createElement('button');
             btn.className = `btn btn-outline-primary ${i === currentCoursesPage ? 'active' : ''}`;

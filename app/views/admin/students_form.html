@@ -14,7 +14,8 @@
           </h4>
         </div>
         <div class="card-body">
-          <form method="POST" autocomplete="off">
+          <form method="POST" autocomplete="off" 
+            action="{% if student %}{{ url_for('admin.students_edit_view', student_id=student.id) }}{% else %}{{ url_for('admin.students_create_view') }}{% endif %}">
             <div class="form-group mb-3">
               <label for="firstName">Nombre</label>
               <input type="text" class="form-control" id="firstName" name="first_name" required value="{{ student.first_name if student else '' }}">
