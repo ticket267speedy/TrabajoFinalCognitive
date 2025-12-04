@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify, current_app, Response, stream_with_context
-import cv2
 import time
 import subprocess
 import threading
@@ -13,33 +12,22 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 
-# Importaciones pesadas movidas a importación perezosa dentro de funciones
-from flask import Blueprint, request, jsonify, current_app, Response, stream_with_context
-import cv2
-import time
-import subprocess
-import threading
-import sys
-import os
-from datetime import datetime
-from werkzeug.security import generate_password_hash
-from werkzeug.security import check_password_hash
-from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
-from ..extensions import db
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
-
-# Importaciones pesadas movidas a importación perezosa dentro de funciones
-# para evitar que errores de dependencias bloqueen el arranque de la app.
-from ..models import Student, Alert
-from ..models import User, Course, Enrollment, ClassSession, AttendanceSummary, AdvisorCourseLink
+# Importaciones de modelos desde la nueva estructura organizada por capas
+from ..models import Student, User, Course, Enrollment, Alert, Attendance
 import os
 from werkzeug.utils import secure_filename
 import base64
-from app.services.face_recognition_service import generar_modelo
-from app.services.face_recognition_service import reconocer_en_frame, dibujar_resultados, cargar_modelo
-from app.services.chatbot_service import get_chatbot_response
-# Chatbot deshabilitado
+
+# Intento de importar excepciones de openai para usarlas en bloques except.
+# Si openai no está instalado en el entorno de ejecución, definimos estas
+# referencias como Exception para evitar UnboundLocalError cuando fallen
+# imports posteriores (p. ej. si el módulo del chatbot no se puede importar).
+try:
+    from openai import AuthenticationError, RateLimitError, APIError  # type: ignore
+except Exception:
+    AuthenticationError = Exception
+    RateLimitError = Exception
+    APIError = Exception
 
 
 api_bp = Blueprint("api", __name__)
@@ -50,6 +38,9 @@ api_bp = Blueprint("api", __name__)
 @jwt_required()
 def admin_attendance_face():
     """Recibe una imagen, detecta rostros y marca asistencia si hay coincidencia."""
+    import numpy as np
+    import cv2
+    from app.services.face_recognition_service import reconocer_en_frame, cargar_modelo
     if not _require_role("admin"):
         return jsonify({"error": "No autorizado"}), 401
     
@@ -62,10 +53,10 @@ def admin_attendance_face():
     if not course_id:
         return jsonify({"error": "course_id requerido"}), 400
         
-    # Verificar sesión activa
-    active_session = ClassSession.query.filter_by(course_id=course_id, status="active").first()
-    if not active_session:
-        return jsonify({"error": "No hay sesión activa para este curso"}), 400
+    # Validar que el curso existe
+    course = Course.query.get(course_id)
+    if not course:
+        return jsonify({"error": "Curso no encontrado"}), 404
         
     # Cargar modelo
     known_encodings, known_names = cargar_modelo()
@@ -462,14 +453,54 @@ def user_public_profile(user_id: int):
 # --- Chatbot ---
 @api_bp.post("/chatbot")
 def chatbot_endpoint():
-    """Endpoint para el chatbot."""
-    data = request.get_json(silent=True) or {}
-    message = data.get("message", "")
-    if not message:
-        return jsonify({"response": "¿En qué puedo ayudarte?"}), 200
-        
-    response = get_chatbot_response(message)
-    return jsonify({"response": response}), 200
+    """Endpoint para el chatbot GPT."""
+    try:
+        from ..ai.chatbot.gpt_service import GPTChatbotService
+        from openai import AuthenticationError, RateLimitError, APIError
+
+        data = request.get_json(silent=True) or {}
+        message = data.get("message", "")
+        # Intentar obtener rol del remitente (el widget puede enviar 'role' o 'user_role')
+        user_role = data.get("role") or data.get("user_role") or None
+        # Si no viene desde el widget, intentar leer rol desde JWT si el usuario está autenticado
+        if not user_role:
+            try:
+                from flask_jwt_extended import verify_jwt_in_request, get_jwt
+                # intenta verificar token de forma opcional
+                verify_jwt_in_request(optional=True)
+                claims = get_jwt()
+                if claims:
+                    user_role = claims.get('role')
+            except Exception:
+                # Si falla, seguimos sin rol
+                user_role = user_role
+        if not message:
+            return jsonify({"response": "Hola! Soy el asistente virtual de CogniPass. En que puedo ayudarte?"}), 200
+
+        # Usar el servicio GPT
+        chatbot = GPTChatbotService()
+        # Logear la entrada para depuración
+        current_app.logger.info(f"/api/chatbot request json: {data}")
+        response_text = chatbot.get_response(message, user_role=user_role)
+        # Intentar exponer provider/model para diagnóstico
+        provider = getattr(chatbot, 'provider', None)
+        model_used = getattr(chatbot, 'model_name', None) or getattr(chatbot, 'GEMINI_MODEL', None) or getattr(chatbot, 'OPENAI_MODEL', None)
+        return jsonify({"response": response_text, "provider": provider, "model_used": model_used}), 200
+
+    except ValueError as e:
+        # Si no hay API key configurada
+        return jsonify({"error": str(e), "response": "Chatbot no disponible - API key no configurada"}), 500
+    except AuthenticationError as e:
+        return jsonify({"error": "Autenticación con OpenAI falló", "detail": str(e), "response": "Chatbot no disponible - problema de autenticación"}), 401
+    except RateLimitError as e:
+        return jsonify({"error": "Rate limit", "detail": str(e), "response": "Se alcanzó el límite de solicitudes. Intenta nuevamente más tarde."}), 429
+    except APIError as e:
+        return jsonify({"error": "Error en servicio externo", "detail": str(e), "response": "Servicio de IA temporalmente no disponible"}), 503
+    except Exception as e:
+        import logging
+        logging.exception("Error en chatbot")
+        return jsonify({"error": "Error al procesar la solicitud", "response": "Intenta nuevamente mas tarde"}), 500
+
 
 
 
@@ -779,6 +810,100 @@ def admin_courses_delete(course_id: int):
     return jsonify({"status": "deleted"}), 200
 
 
+# --- Admin: Estudiantes por Curso (Enrollments) ---
+
+@api_bp.get("/admin/courses/<int:course_id>/students")
+@jwt_required()
+def admin_course_students_list(course_id: int):
+    """Obtener lista de estudiantes en un curso"""
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    admin_id = _normalize_identity(get_jwt_identity())
+    
+    # Verificar que el admin sea propietario del curso
+    course = Course.query.get_or_404(course_id)
+    if course.admin_id != admin_id:
+        return jsonify({"error": "No autorizado"}), 403
+    
+    # Obtener estudiantes inscritos en el curso
+    enrollments = Enrollment.query.filter_by(course_id=course_id).all()
+    students = []
+    
+    for enrollment in enrollments:
+        student = Student.query.get(enrollment.student_id)
+        if student:
+            students.append({
+                "id": student.id,
+                "first_name": student.first_name,
+                "last_name": student.last_name,
+                "email": student.email,
+                "is_scholarship_student": student.is_scholarship_student
+            })
+    
+    return jsonify(students), 200
+
+
+@api_bp.post("/admin/courses/<int:course_id>/enroll")
+@jwt_required()
+def admin_course_enroll_student(course_id: int):
+    """Agregar estudiante a un curso"""
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    admin_id = _normalize_identity(get_jwt_identity())
+    
+    # Verificar que el admin sea propietario del curso
+    course = Course.query.get_or_404(course_id)
+    if course.admin_id != admin_id:
+        return jsonify({"error": "No autorizado"}), 403
+    
+    data = request.get_json(silent=True) or {}
+    student_id = data.get("student_id")
+    
+    if not student_id:
+        return jsonify({"error": "ID del estudiante requerido"}), 400
+    
+    # Verificar que el estudiante exista
+    student = Student.query.get_or_404(student_id)
+    
+    # Verificar si ya está inscrito
+    existing = Enrollment.query.filter_by(course_id=course_id, student_id=student_id).first()
+    if existing:
+        return jsonify({"error": "Estudiante ya inscrito en este curso"}), 400
+    
+    # Crear enrollment
+    enrollment = Enrollment(course_id=course_id, student_id=student_id)
+    db.session.add(enrollment)
+    db.session.commit()
+    
+    return jsonify({
+        "id": enrollment.id,
+        "course_id": course_id,
+        "student_id": student_id
+    }), 201
+
+
+@api_bp.delete("/admin/courses/<int:course_id>/unenroll/<int:student_id>")
+@jwt_required()
+def admin_course_unenroll_student(course_id: int, student_id: int):
+    """Eliminar estudiante de un curso"""
+    if not _require_role("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    admin_id = _normalize_identity(get_jwt_identity())
+    
+    # Verificar que el admin sea propietario del curso
+    course = Course.query.get_or_404(course_id)
+    if course.admin_id != admin_id:
+        return jsonify({"error": "No autorizado"}), 403
+    
+    # Obtener el enrollment
+    enrollment = Enrollment.query.filter_by(course_id=course_id, student_id=student_id).first_or_404()
+    
+    db.session.delete(enrollment)
+    db.session.commit()
+    
+    return jsonify({"status": "deleted"}), 200
+
+
 # --- Admin: Control de sesiones ---
 
 @api_bp.post("/admin/courses/<int:course_id>/session/start")
@@ -790,15 +915,8 @@ def admin_session_start(course_id: int):
     course = Course.query.get_or_404(course_id)
     if course.admin_id != admin_id:
         return jsonify({"error": "No autorizado"}), 403
-    active = ClassSession.query.filter_by(course_id=course_id, status="active").first()
-    if active:
-        return jsonify({"error": "Ya existe una sesión activa", "session_id": active.id}), 400
-    # Create new session with current timestamp
-    from datetime import datetime
-    sess = ClassSession(course_id=course_id, status="active", start_time=datetime.utcnow())
-    db.session.add(sess)
-    db.session.commit()
-    return jsonify({"session_id": sess.id, "status": "active"}), 201
+    # La sesión se inicia implícitamente cuando se registra la asistencia
+    return jsonify({"course_id": course_id, "status": "session_started"}), 201
 
 
 @api_bp.post("/admin/courses/<int:course_id>/session/end")
@@ -810,15 +928,8 @@ def admin_session_end(course_id: int):
     course = Course.query.get_or_404(course_id)
     if course.admin_id != admin_id:
         return jsonify({"error": "No autorizado"}), 403
-    active = ClassSession.query.filter_by(course_id=course_id, status="active").first()
-    if not active:
-        return jsonify({"error": "No hay sesión activa"}), 400
-    # End session with current timestamp
-    from datetime import datetime
-    active.end_time = datetime.utcnow()
-    active.status = "finished"
-    db.session.commit()
-    return jsonify({"session_id": active.id, "status": "finished"}), 200
+    # La sesión se cierra implícitamente en el sistema
+    return jsonify({"course_id": course_id, "status": "session_ended"}), 200
 
 
 @api_bp.get("/admin/courses/<int:course_id>/session/active")
@@ -843,38 +954,42 @@ def admin_session_active(course_id: int):
 def admin_summaries_list():
     if not _require_role("admin"):
         return jsonify({"error": "No autorizado"}), 401
-    session_id = request.args.get("session_id", type=int)
-    q = AttendanceSummary.query
-    if session_id:
-        q = q.filter_by(session_id=session_id)
-    summaries = q.all()
+    course_id = request.args.get("course_id", type=int)
+    from datetime import date
+    q = Attendance.query
+    if course_id:
+        q = q.filter_by(course_id=course_id)
+    # Obtener solo registros de hoy
+    today = date.today()
+    q = q.filter(db.func.date(Attendance.created_at) == today)
+    records = q.all()
     items = [
         {
             "id": a.id,
-            "session_id": a.session_id,
+            "course_id": a.course_id,
             "student_id": a.student_id,
-            "presence_percentage": a.presence_percentage,
-            "is_manual_override": a.is_manual_override,
+            "date": a.date.isoformat(),
+            "status": a.status,
+            "entry_time": str(a.entry_time) if a.entry_time else None,
+            "exit_time": str(a.exit_time) if a.exit_time else None,
         }
-        for a in summaries
+        for a in records
     ]
     return jsonify({"items": items}), 200
 
 
-@api_bp.patch("/admin/summaries/<int:summary_id>")
+@api_bp.patch("/admin/summaries/<int:attendance_id>")
 @jwt_required()
-def admin_summary_update(summary_id: int):
+def admin_summary_update(attendance_id: int):
     if not _require_role("admin"):
         return jsonify({"error": "No autorizado"}), 401
-    a = AttendanceSummary.query.get_or_404(summary_id)
+    a = Attendance.query.get_or_404(attendance_id)
     data = request.get_json(silent=True) or {}
-    if "presence_percentage" in data:
-        try:
-            a.presence_percentage = float(data.get("presence_percentage"))
-        except Exception:
-            return jsonify({"error": "presence_percentage inválido"}), 400
-    if "is_manual_override" in data:
-        a.is_manual_override = bool(data.get("is_manual_override"))
+    if "status" in data:
+        valid_statuses = ['presente', 'tardanza', 'falta', 'salida_repentina']
+        if data.get("status") not in valid_statuses:
+            return jsonify({"error": f"Status debe ser uno de: {','.join(valid_statuses)}"}), 400
+        a.status = data.get("status")
     db.session.commit()
     return jsonify({"status": "updated"}), 200
 
@@ -1129,7 +1244,14 @@ def video_stream():
     return Response(stream_with_context(gen()), content_type="multipart/x-mixed-replace; boundary=frame")
 
 FACE_PROC = None
-KNOWN_ENCODINGS, KNOWN_NAMES = cargar_modelo()
+KNOWN_ENCODINGS, KNOWN_NAMES = None, None  # Cargar perezosamente en la función que lo usa
+
+def _load_face_model():
+    global KNOWN_ENCODINGS, KNOWN_NAMES
+    if KNOWN_ENCODINGS is None:
+        from app.services.face_recognition_service import cargar_modelo
+        KNOWN_ENCODINGS, KNOWN_NAMES = cargar_modelo()
+    return KNOWN_ENCODINGS, KNOWN_NAMES
 
 @api_bp.post("/admin/face/run")
 def face_run():
@@ -1235,7 +1357,8 @@ def recognize_stream():
                     continue
                 i += 1
                 if i % process_every == 0:
-                    locs, names = reconocer_en_frame(frame, KNOWN_ENCODINGS or [], KNOWN_NAMES or [], tolerance=0.5)
+                    enc, nms = _load_face_model()
+                    locs, names = reconocer_en_frame(frame, enc or [], nms or [], tolerance=0.5)
                     last_locs, last_names = locs, names
                 frame2 = dibujar_resultados(frame, last_locs, last_names)
                 ok2, buf = cv2.imencode('.jpg', frame2)
@@ -1379,3 +1502,38 @@ def handle_save_frame():
         return jsonify({"msg": "Imagen guardada", "path": path}), 200
     except Exception as e:
         return jsonify({"msg": f"Error al guardar: {str(e)}"}), 500
+
+
+@api_bp.get("/admin/users")
+@jwt_required()
+def admin_users_list():
+    """List users by role (admin, advisor, student)"""
+    if not _require_role("admin"):
+        return jsonify({"msg": "Acceso denegado"}), 403
+    
+    role = request.args.get('role', 'advisor')  # Default to advisor
+    
+    try:
+        query = User.query
+        
+        if role == 'advisor':
+            query = query.filter_by(role='advisor')
+        elif role == 'student':
+            query = query.filter_by(role='student')
+        elif role == 'admin':
+            query = query.filter_by(role='admin')
+        
+        users = query.all()
+        
+        return jsonify({
+            'data': [{
+                'id': u.id,
+                'first_name': u.first_name,
+                'last_name': u.last_name,
+                'email': u.email,
+                'role': u.role,
+                'created_at': u.created_at.isoformat() if hasattr(u, 'created_at') else None
+            } for u in users]
+        }), 200
+    except Exception as e:
+        return jsonify({"msg": f"Error: {str(e)}"}), 500

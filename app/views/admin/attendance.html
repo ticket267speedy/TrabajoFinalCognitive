@@ -1,0 +1,195 @@
+{% extends "layout.html" %}
+
+{% block title %}Asistencia - CogniPass{% endblock %}
+
+{% block content %}
+
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Registro de Asistencia</h1>
+    <a href="{{ url_for('admin.attendance_create_view') }}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Agregar Asistencia
+    </a>
+</div>
+
+<!-- Flash Messages -->
+{% if get_flashed_messages() %}
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Asistencia Card -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-clipboard-list"></i> Asistencia de Todos los Cursos
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="attendanceTable">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha</th>
+                        <th>Estudiante</th>
+                        <th>Curso</th>
+                        <th>Entrada</th>
+                        <th>Salida</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="attendanceTableBody">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">Cargando registros de asistencia...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="attendancePagination" class="btn-group mt-3" aria-label="Paginación"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let ADMIN_API_PREFIX = '/api/admin';
+    let attendancePerPage = 15;
+    let currentAttendancePage = 1;
+    let allAttendance = [];
+
+    function authHeaders() {
+        const token = localStorage.getItem('access_token');
+        return {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    async function detectAdminApiPrefix() {
+        const prefixes = ['/api/admin', '/admin/api'];
+        for (const prefix of prefixes) {
+            try {
+                const res = await fetch(`${prefix}/profile`, { headers: authHeaders() });
+                if (res.ok) {
+                    ADMIN_API_PREFIX = prefix;
+                    return;
+                }
+            } catch (e) { }
+        }
+    }
+
+    async function loadAttendance() {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                document.getElementById('attendanceTableBody').innerHTML =
+                    '<tr><td colspan="8" class="text-center"><a href="/login">Por favor inicia sesión</a></td></tr>';
+                return;
+            }
+
+            await detectAdminApiPrefix();
+            const res = await fetch(`${ADMIN_API_PREFIX}/attendance`, { headers: authHeaders() });
+
+            if (!res.ok) {
+                document.getElementById('attendanceTableBody').innerHTML =
+                    '<tr><td colspan="8" class="text-center text-danger">Error al cargar asistencia</td></tr>';
+                return;
+            }
+
+            const data = await res.json();
+            allAttendance = Array.isArray(data) ? data : data.data || [];
+            displayAttendanceTable();
+        } catch (e) {
+            console.error('Error:', e);
+            document.getElementById('attendanceTableBody').innerHTML =
+                '<tr><td colspan="8" class="text-center text-danger">Error de conexión</td></tr>';
+        }
+    }
+
+    function displayAttendanceTable() {
+        const tbody = document.getElementById('attendanceTableBody');
+
+        if (allAttendance.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No hay registros de asistencia</td></tr>';
+            document.getElementById('attendancePagination').innerHTML = '';
+            return;
+        }
+
+        const start = (currentAttendancePage - 1) * attendancePerPage;
+        const end = start + attendancePerPage;
+        const paginatedAttendance = allAttendance.slice(start, end);
+
+        tbody.innerHTML = paginatedAttendance.map(a => {
+            const statusBadge = {
+                'presente': 'badge-success',
+                'tardanza': 'badge-warning',
+                'falta': 'badge-danger',
+                'salida_repentina': 'badge-info'
+            };
+            const statusLabel = {
+                'presente': 'Presente',
+                'tardanza': 'Tardanza',
+                'falta': 'Falta',
+                'salida_repentina': 'Salida Repentina'
+            };
+            const badgeClass = statusBadge[a.status] || 'badge-secondary';
+            const label = statusLabel[a.status] || a.status;
+
+            return `
+                <tr>
+                    <td>${a.id}</td>
+                    <td>${a.date || '-'}</td>
+                    <td>${a.student_name || '-'}</td>
+                    <td>${a.course_name || '-'}</td>
+                    <td>${a.entry_time || '-'}</td>
+                    <td>${a.exit_time || '-'}</td>
+                    <td><span class="badge ${badgeClass}">${label}</span></td>
+                    <td>
+                        <a href="/admin/attendance/${a.id}/edit" class="btn btn-warning btn-circle btn-sm" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form action="/admin/attendance/${a.id}/delete" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-circle btn-sm" title="Eliminar" 
+                                onclick="return confirm('¿Estás seguro de que deseas eliminar este registro de asistencia?');">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        renderPagination();
+    }
+
+    function renderPagination() {
+        const totalPages = Math.ceil(allAttendance.length / attendancePerPage);
+        const paginationDiv = document.getElementById('attendancePagination');
+        paginationDiv.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn btn-outline-primary ${i === currentAttendancePage ? 'active' : ''}`;
+            btn.textContent = i;
+            btn.onclick = () => {
+                currentAttendancePage = i;
+                displayAttendanceTable();
+            };
+            paginationDiv.appendChild(btn);
+        }
+    }
+
+    // Cargar asistencia al iniciar
+    document.addEventListener('DOMContentLoaded', loadAttendance);
+</script>
+{% endblock %}

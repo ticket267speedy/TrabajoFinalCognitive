@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
 from werkzeug.security import check_password_hash
 from ..extensions import db
-from ..models import User, Course, Student, Enrollment
+from ..models import User, Course, Enrollment, Student
 
 shared_bp = Blueprint("shared", __name__)
 

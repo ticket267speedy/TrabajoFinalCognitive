@@ -3,12 +3,18 @@ from flask import Flask, jsonify
 from .config import Config
 from .extensions import db, migrate, jwt, cors
 from .controllers.api import api_bp
-from .controllers.admin_controller import admin_bp
+from .controllers.admin_controller import admin_bp, admin_api_bp
 from .controllers.advisor_controller import advisor_bp
 from .controllers.shared_controller import shared_bp
 from .controllers.assets_controller import kaiadmin_bp, axis_bp
+# Nuevos controladores por dominio
+from .controllers.attendance import attendance_bp
+from .controllers.courses import courses_bp
+from .controllers.students import students_bp
+from .controllers.users import users_bp
 
-from . import models
+# Importar todos los modelos desde la nueva estructura organizada por capas
+from .models import User, Student, Course, Enrollment, Attendance, Alert
 
 def create_app(config_class: type = Config) -> Flask:
     """App Factory para inicializar la aplicación Flask.
@@ -37,10 +43,21 @@ def create_app(config_class: type = Config) -> Flask:
         return jsonify(sorted(list(app.blueprints.keys())))
 
     # Registro de Blueprints (Controladores MVC)
-    app.register_blueprint(shared_bp)  # Rutas compartidas (login, register, etc.)
-    app.register_blueprint(admin_bp, url_prefix="/admin")  # Rutas del administrador
-    app.register_blueprint(advisor_bp, url_prefix="/dashboard")  # Rutas del asesor
-    app.register_blueprint(api_bp, url_prefix="/api")  # API legacy (reconocimiento facial)
+    # Rutas compartidas (login, register, etc.)
+    app.register_blueprint(shared_bp)
+    # Rutas del administrador (vistas HTML)
+    app.register_blueprint(admin_bp, url_prefix="/admin")
+    # API del administrador (legacy)
+    app.register_blueprint(admin_api_bp, url_prefix="/api")
+    # Rutas del asesor
+    app.register_blueprint(advisor_bp, url_prefix="/dashboard")
+    # API legacy (reconocimiento facial)
+    app.register_blueprint(api_bp, url_prefix="/api")
+    # Nuevos controladores MVC por dominio
+    app.register_blueprint(attendance_bp, url_prefix="/api")
+    app.register_blueprint(courses_bp, url_prefix="/api")
+    app.register_blueprint(students_bp, url_prefix="/api")
+    app.register_blueprint(users_bp, url_prefix="/api")
     # Archivos estáticos adicionales (KaiAdmin y Axis)
     app.register_blueprint(kaiadmin_bp)
     app.register_blueprint(axis_bp)

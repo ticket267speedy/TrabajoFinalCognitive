@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+
+{% block title %}Editar Asistencia - CogniPass{% endblock %}
+
+{% block content %}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h3 mb-4 text-gray-800">Editar Registro de Asistencia</h1>
+
+        <!-- Flash Messages -->
+        {% if get_flashed_messages() %}
+            {% for category, message in get_flashed_messages(with_categories=true) %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Attendance Form -->
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.attendance_edit_action', attendance_id=attendance.id) }}">
+                    
+                    <!-- Información de referencia (solo lectura) -->
+                    <fieldset class="mb-4 pb-4 border-bottom">
+                        <legend class="text-muted small mb-3">Información del Registro</legend>
+                        
+                        <div class="form-group mb-3">
+                            <label for="attendanceId">ID del Registro</label>
+                            <input type="text" class="form-control" id="attendanceId" value="{{ attendance.id }}" disabled>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 form-group mb-3">
+                                <label for="attendanceDate">Fecha</label>
+                                <input type="text" class="form-control" id="attendanceDate" 
+                                    value="{{ attendance.date.strftime('%d/%m/%Y') if attendance.date else '-' }}" disabled>
+                            </div>
+
+                            <div class="col-md-6 form-group mb-3">
+                                <label for="attendanceCourse">Curso</label>
+                                <input type="text" class="form-control" id="attendanceCourse" 
+                                    value="{{ attendance.course.name if attendance.course else '-' }}" disabled>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="attendanceStudent">Estudiante</label>
+                            <input type="text" class="form-control" id="attendanceStudent" 
+                                value="{{ attendance.student.first_name }} {{ attendance.student.last_name }}" disabled>
+                        </div>
+                    </fieldset>
+
+                    <!-- Campos editables -->
+                    <div class="form-group mb-3">
+                        <label for="status">Estado <span class="text-danger">*</span></label>
+                        <select class="form-control" id="status" name="status" required>
+                            <option value="presente" {% if attendance.status == 'presente' %}selected{% endif %}>Presente</option>
+                            <option value="tardanza" {% if attendance.status == 'tardanza' %}selected{% endif %}>Tardanza</option>
+                            <option value="falta" {% if attendance.status == 'falta' %}selected{% endif %}>Falta</option>
+                            <option value="salida_repentina" {% if attendance.status == 'salida_repentina' %}selected{% endif %}>Salida Repentina</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="entryTime">Hora de Entrada</label>
+                            <input type="time" class="form-control" id="entryTime" name="entry_time" 
+                                value="{{ attendance.entry_time.strftime('%H:%M') if attendance.entry_time else '' }}">
+                        </div>
+
+                        <div class="col-md-6 form-group mb-3">
+                            <label for="exitTime">Hora de Salida</label>
+                            <input type="time" class="form-control" id="exitTime" name="exit_time" 
+                                value="{{ attendance.exit_time.strftime('%H:%M') if attendance.exit_time else '' }}">
+                        </div>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-save"></i> Guardar Cambios
+                        </button>
+                        <a href="{{ url_for('admin.attendance_view') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

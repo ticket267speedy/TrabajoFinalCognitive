@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ..extensions import db
-from ..models import User, Course, Student, Enrollment, Alert
+from ..models import User, Course, Enrollment, Student, Alert
 from sqlalchemy import desc
 
 advisor_bp = Blueprint("advisor", __name__)

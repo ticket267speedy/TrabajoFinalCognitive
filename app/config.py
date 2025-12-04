@@ -31,9 +31,14 @@ class Config:
     
     # Opciones de conexión para PostgreSQL (Supabase)
     SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_size": 10,
-        "pool_recycle": 3600,
+        "pool_size": 5,
+        "pool_recycle": 1800,
+        "max_overflow": 2,
         "pool_pre_ping": True,
+        "connect_args": {
+            "connect_timeout": 10,
+            "application_name": "cognipass_app"
+        }
     }
 
     # AWS deshabilitado: sin integración de Rekognition ni IA

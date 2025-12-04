@@ -12,3 +12,6 @@ flask-cors
 flask-jwt-extended
 gunicorn
 passlib[bcrypt]
+
+# AI & Chatbot
+openai

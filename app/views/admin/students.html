@@ -1,0 +1,176 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestión de Estudiantes - CogniPass{% endblock %}
+
+{% block content %}
+
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Gestión de Estudiantes</h1>
+    <a href="{{ url_for('admin.students_create_view') }}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <i class="fas fa-plus fa-sm text-white-50"></i> Agregar Estudiante
+    </a>
+</div>
+
+<!-- Flash Messages -->
+{% if get_flashed_messages() %}
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Estudiantes Table -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-table"></i> Tabla de Estudiantes
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="studentsTable">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Apellido</th>
+                        <th>Email</th>
+                        <th>Becario</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Cargando estudiantes...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="studentsPagination" class="btn-group mt-3" aria-label="Paginación"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let ADMIN_API_PREFIX = '/api/admin';
+    let studentsPerPage = 10;
+    let currentStudentsPage = 1;
+    let allStudents = [];
+
+    function authHeaders() {
+        const token = localStorage.getItem('access_token');
+        return {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    async function detectAdminApiPrefix() {
+        const prefixes = ['/api/admin', '/admin/api'];
+        for (const prefix of prefixes) {
+            try {
+                const res = await fetch(`${prefix}/profile`, { headers: authHeaders() });
+                if (res.ok) {
+                    ADMIN_API_PREFIX = prefix;
+                    return;
+                }
+            } catch (e) { }
+        }
+    }
+
+    async function loadStudents() {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                document.getElementById('studentsTableBody').innerHTML =
+                    '<tr><td colspan="6" class="text-center"><a href="/login">Por favor inicia sesión</a></td></tr>';
+                return;
+            }
+
+            await detectAdminApiPrefix();
+            const res = await fetch(`${ADMIN_API_PREFIX}/students`, { headers: authHeaders() });
+
+            if (!res.ok) {
+                document.getElementById('studentsTableBody').innerHTML =
+                    '<tr><td colspan="6" class="text-center text-danger">Error al cargar estudiantes</td></tr>';
+                return;
+            }
+
+            const data = await res.json();
+            allStudents = Array.isArray(data) ? data : data.items || data.data || [];
+            displayStudentsTable();
+        } catch (e) {
+            console.error('Error:', e);
+            document.getElementById('studentsTableBody').innerHTML =
+                '<tr><td colspan="6" class="text-center text-danger">Error de conexión</td></tr>';
+        }
+    }
+
+    function displayStudentsTable() {
+        const tbody = document.getElementById('studentsTableBody');
+
+        if (allStudents.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay estudiantes. <a href="/admin/students/create">Crear uno</a></td></tr>';
+            document.getElementById('studentsPagination').innerHTML = '';
+            return;
+        }
+
+        const start = (currentStudentsPage - 1) * studentsPerPage;
+        const end = start + studentsPerPage;
+        const paginatedStudents = allStudents.slice(start, end);
+
+        tbody.innerHTML = paginatedStudents.map(s => `
+            <tr>
+                <td>${s.id}</td>
+                <td>${s.first_name}</td>
+                <td>${s.last_name}</td>
+                <td>${s.email}</td>
+                <td>
+                    <span class="badge ${s.is_scholarship_student ? 'badge-success' : 'badge-secondary'}">
+                        ${s.is_scholarship_student ? 'Sí' : 'No'}
+                    </span>
+                </td>
+                <td>
+                    <a href="/admin/students/${s.id}/edit" class="btn btn-warning btn-circle btn-sm" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <form action="/admin/students/${s.id}/delete" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-circle btn-sm" onclick="return confirm('¿Estás seguro de que deseas eliminar este estudiante?');" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        `).join('');
+
+        renderPagination();
+    }
+
+    function renderPagination() {
+        const totalPages = Math.ceil(allStudents.length / studentsPerPage);
+        const paginationDiv = document.getElementById('studentsPagination');
+        paginationDiv.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn btn-outline-primary ${i === currentStudentsPage ? 'active' : ''}`;
+            btn.textContent = i;
+            btn.onclick = () => {
+                currentStudentsPage = i;
+                displayStudentsTable();
+            };
+            paginationDiv.appendChild(btn);
+        }
+    }
+
+    // Cargar estudiantes al iniciar
+    document.addEventListener('DOMContentLoaded', loadStudents);
+</script>
+{% endblock %}

@@ -1,9 +1,7 @@
-from .user import User
-from .student import Student
-from .course import Course
-from .enrollment import Enrollment
-from .class_session import ClassSession
-from .attendance_log import AttendanceLog
-from .attendance_summary import AttendanceSummary
-from .alert import Alert
-from .advisor_course_link import AdvisorCourseLink
+"""__init__ de Modelos - Importa todos los modelos para la inicialización"""
+from .users.user import User
+from .students.student import Student
+from .courses.course import Course, Enrollment
+from .attendance.attendance import Attendance, Alert
+
+__all__ = ['User', 'Student', 'Course', 'Enrollment', 'Attendance', 'Alert']

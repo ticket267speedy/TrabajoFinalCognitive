@@ -1,0 +1,405 @@
+{% extends "layout.html" %}
+
+{% block title %}Sesiones de Clase - CogniPass{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h2 class="mb-0">Sesiones de Clase</h2>
+        <a href="/admin" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <!-- Seleccionar Curso y Controles de Sesión -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0 font-weight-bold">Iniciar Sesión de Clase</h6>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Seleccionar Curso</label>
+                    <select id="sessionCourseSelect" class="form-select">
+                        <option value="">-- Cargando cursos --</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Información de Sesión</label>
+                    <div id="sessionInfo" class="alert alert-info mb-0">
+                        Selecciona un curso para ver información
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group w-100" role="group">
+                <button id="checkSession" type="button" class="btn btn-outline-primary">
+                    <i class="fas fa-eye"></i> Ver Sesión Activa
+                </button>
+                <button id="startSession" type="button" class="btn btn-success">
+                    <i class="fas fa-play"></i> Iniciar Sesión
+                </button>
+                <button id="endSession" type="button" class="btn btn-danger">
+                    <i class="fas fa-stop"></i> Finalizar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid Principal: Cámaras + Reconocimiento -->
+    <div class="row mb-4">
+        <!-- Sección de Cámaras -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 font-weight-bold">Cámaras en Vivo</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="mb-2 text-center">Cámara de Entrada</h6>
+                            <div style="position: relative; background: #f0f0f0; border-radius: 8px; overflow: hidden; min-height: 300px;">
+                                <img id="camEntrada" alt="Cámara de entrada" style="width: 100%; display: none;">
+                                <div id="noStreamEntrada" class="d-flex align-items-center justify-content-center" style="height: 300px; color: #999;">
+                                    <i class="fas fa-video fa-3x"></i>
+                                </div>
+                            </div>
+                            <div class="btn-group mt-2 w-100" role="group">
+                                <button id="entradaOn" class="btn btn-sm btn-success">Encender</button>
+                                <button id="entradaOff" class="btn btn-sm btn-secondary">Apagar</button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="mb-2 text-center">Cámara de Salida</h6>
+                            <div style="position: relative; background: #f0f0f0; border-radius: 8px; overflow: hidden; min-height: 300px;">
+                                <img id="camSalida" alt="Cámara de salida" style="width: 100%; display: none;">
+                                <div id="noStreamSalida" class="d-flex align-items-center justify-content-center" style="height: 300px; color: #999;">
+                                    <i class="fas fa-video fa-3x"></i>
+                                </div>
+                            </div>
+                            <div class="btn-group mt-2 w-100" role="group">
+                                <button id="salidaOn" class="btn btn-sm btn-success">Encender</button>
+                                <button id="salidaOff" class="btn btn-sm btn-secondary">Apagar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info" id="cameraMsg">
+                        <i class="fas fa-info-circle"></i> Cámaras apagadas. Selecciona un curso e inicia la sesión.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Reconocimiento Facial -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 font-weight-bold">Reconocimiento Facial</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button id="btnCapture" class="btn btn-outline-secondary">
+                            <i class="fas fa-camera"></i> Capturar Rostros
+                        </button>
+                        <button id="btnModel" class="btn btn-warning">
+                            <i class="fas fa-plus-circle"></i> Nuevo Alumno
+                        </button>
+                        <button id="btnRecognize" class="btn btn-primary">
+                            <i class="fas fa-check-circle"></i> Registrar Asistencia
+                        </button>
+                        <button id="btnRecognizeStop" class="btn btn-danger" style="display:none;">
+                            <i class="fas fa-times-circle"></i> Detener Registro
+                        </button>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label fw-bold">Fuente de Captura</label>
+                        <select id="captureSource" class="form-select">
+                            <option value="entrada">Cámara de Entrada</option>
+                            <option value="salida">Cámara de Salida</option>
+                        </select>
+                    </div>
+
+                    <div class="alert alert-info mt-3 mb-0" id="aiMsg">
+                        <i class="fas fa-info-circle"></i> Esperando acción...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Alumnos y Asistencia -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 font-weight-bold">Registro de Asistencia</h6>
+                <small class="text-muted">Asistencia del curso seleccionado</small>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="attendanceTable">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Estudiante</th>
+                            <th>Entrada</th>
+                            <th>Salida</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        <tr><td colspan="5" class="text-center text-muted py-3">Selecciona un curso para ver asistencia</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="attendanceMsg" class="alert alert-info mt-3 mb-0" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Select oculto para compatibilidad con JavaScript -->
+    <select id="studentSelect" style="display:none;"></select>
+</div>
+
+<!-- Modal: Editar Asistencia -->
+<div class="modal fade" id="editAttendanceModal" tabindex="-1" aria-labelledby="editAttendanceTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editAttendanceTitle">Editar Asistencia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Estado</label>
+                    <select id="editAttendanceStatus" class="form-select">
+                        <option value="presente">Presente</option>
+                        <option value="tardanza">Tardanza</option>
+                        <option value="falta">Falta</option>
+                        <option value="salida_repentina">Salida Repentina</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hora de Entrada</label>
+                    <input id="editAttendanceEntry" type="time" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hora de Salida</label>
+                    <input id="editAttendanceExit" type="time" class="form-control" />
+                </div>
+                <div id="editAttendanceMsg" class="alert alert-info mt-3" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="editAttendanceSubmit" class="btn btn-primary">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/session.js"></script>
+<script>
+    let ADMIN_API_PREFIX = '/api/admin';
+    let currentEditAttendanceId = null;
+    let courseAttendance = [];
+
+    function authHeaders() {
+        const token = localStorage.getItem('access_token');
+        const h = { 'Content-Type': 'application/json' };
+        if (token) h['Authorization'] = `Bearer ${token}`;
+        return h;
+    }
+
+    async function detectAdminApiPrefix() {
+        const candidates = ['/api/admin', '/admin/api'];
+        for (const prefix of candidates) {
+            try {
+                const res = await fetch(`${prefix}/profile`, { headers: authHeaders(), cache: 'no-store' });
+                if (res.ok || res.status === 401 || res.status === 422) {
+                    ADMIN_API_PREFIX = prefix;
+                    return true;
+                }
+            } catch (e) { }
+        }
+        return false;
+    }
+
+    // Cargar cursos al abrir la página
+    async function loadCourses() {
+        try {
+            const prefixes = ['/api/admin', '/admin/api'];
+            for (const p of prefixes) {
+                const res = await fetch(`${p}/courses`, { headers: authHeaders() });
+                if (res.ok) {
+                    const { data } = await res.json();
+                    const select = document.getElementById('sessionCourseSelect');
+                    select.innerHTML = '<option value="">-- Selecciona un curso --</option>';
+                    
+                    data.forEach(course => {
+                        const option = document.createElement('option');
+                        option.value = course.id;
+                        option.textContent = course.name;
+                        select.appendChild(option);
+                    });
+                    ADMIN_API_PREFIX = p;
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading courses:', error);
+            document.getElementById('sessionInfo').innerHTML = '<strong>Error al cargar cursos</strong>';
+        }
+    }
+
+    async function loadCourseAttendance(courseId) {
+        if (!courseId) {
+            document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Selecciona un curso</td></tr>';
+            return;
+        }
+
+        const prefixes = ['/api/admin', '/admin/api'];
+        for (const p of prefixes) {
+            try {
+                const res = await fetch(`${p}/courses/${courseId}/attendance`, { headers: authHeaders() });
+                const data = await res.json().catch(() => ({}));
+
+                if (res.ok) {
+                    ADMIN_API_PREFIX = p;
+                    courseAttendance = Array.isArray(data.data) ? data.data : [];
+                    renderAttendanceTable();
+                    return;
+                }
+            } catch (e) { }
+        }
+        document.getElementById('attendanceTableBody').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar asistencia</td></tr>';
+    }
+
+    function renderAttendanceTable() {
+        const tbody = document.getElementById('attendanceTableBody');
+        if (courseAttendance.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No hay registros de asistencia para este curso</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = courseAttendance.map(a => `
+            <tr>
+                <td>${a.student_name || 'Unknown'}</td>
+                <td>${a.entry_time || '-'}</td>
+                <td>${a.exit_time || '-'}</td>
+                <td>
+                    <span class="badge badge-${
+                        a.status === 'presente' ? 'success' :
+                        a.status === 'tardanza' ? 'warning' :
+                        a.status === 'falta' ? 'danger' :
+                        a.status === 'salida_repentina' ? 'info' : 'secondary'
+                    }">
+                        ${a.status || 'Unknown'}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary edit-attendance-btn" data-id="${a.id}">Editar</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    document.getElementById('attendanceTableBody').addEventListener('click', async (e) => {
+        const editBtn = e.target.closest('.edit-attendance-btn');
+        if (!editBtn) return;
+
+        const id = editBtn.dataset.id;
+        const attendance = courseAttendance.find(a => a.id == id);
+        if (!attendance) return;
+
+        document.getElementById('editAttendanceStatus').value = attendance.status || 'presente';
+        document.getElementById('editAttendanceEntry').value = attendance.entry_time || '';
+        document.getElementById('editAttendanceExit').value = attendance.exit_time || '';
+        document.getElementById('editAttendanceMsg').style.display = 'none';
+        currentEditAttendanceId = id;
+
+        const modal = new bootstrap.Modal(document.getElementById('editAttendanceModal'));
+        modal.show();
+    });
+
+    document.getElementById('editAttendanceSubmit').addEventListener('click', async () => {
+        const id = currentEditAttendanceId;
+        const status = document.getElementById('editAttendanceStatus').value;
+        const entry = document.getElementById('editAttendanceEntry').value;
+        const exit = document.getElementById('editAttendanceExit').value;
+
+        const payload = {
+            status: status,
+            entry_time: entry || null,
+            exit_time: exit || null
+        };
+
+        const prefixes = ['/api/admin', '/admin/api'];
+        for (const p of prefixes) {
+            try {
+                const res = await fetch(`${p}/attendance/${id}`, { 
+                    method: 'PATCH', 
+                    headers: authHeaders(), 
+                    body: JSON.stringify(payload) 
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    ADMIN_API_PREFIX = p;
+                    showMsgModal('Asistencia actualizada exitosamente', 'success');
+                    setTimeout(() => {
+                        bootstrap.Modal.getInstance(document.getElementById('editAttendanceModal')).hide();
+                        const courseId = document.getElementById('sessionCourseSelect').value;
+                        loadCourseAttendance(courseId);
+                    }, 800);
+                    return;
+                }
+                showMsgModal(data.error || 'Error al actualizar', 'danger');
+            } catch (e) { }
+        }
+    });
+
+    function showMsgModal(text, type) {
+        const msgEl = document.getElementById('editAttendanceMsg');
+        msgEl.textContent = text;
+        msgEl.className = `alert alert-${type}`;
+        msgEl.style.display = 'block';
+    }
+
+    // Event listeners
+    document.getElementById('sessionCourseSelect').addEventListener('change', function() {
+        const courseId = this.value;
+        loadCourseAttendance(courseId);
+        if (courseId) {
+            document.getElementById('studentSelect').value = courseId;
+        }
+    });
+
+    document.getElementById('startSession').addEventListener('click', function() {
+        const courseId = document.getElementById('sessionCourseSelect').value;
+        if (!courseId) {
+            alert('Selecciona un curso primero');
+            return;
+        }
+        window.location.href = `/admin/course/${courseId}/session`;
+    });
+
+    document.getElementById('checkSession').addEventListener('click', function() {
+        const courseId = document.getElementById('sessionCourseSelect').value;
+        if (!courseId) {
+            alert('Selecciona un curso primero');
+            return;
+        }
+        window.location.href = `/admin/course/${courseId}/session`;
+    });
+
+    // Cargar cursos al inicializar
+    document.addEventListener('DOMContentLoaded', async function() {
+        await detectAdminApiPrefix();
+        loadCourses();
+    });
+</script>
+{% endblock %}

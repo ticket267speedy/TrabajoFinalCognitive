@@ -1,0 +1,151 @@
+{% extends "layout.html" %}
+
+{% block title %}Eliminar Curso - CogniPass{% endblock %}
+
+{% block content %}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h3 mb-4 text-gray-800">Eliminar Curso</h1>
+        
+        <!-- Error Messages -->
+        <div id="messageContainer"></div>
+
+        <!-- Confirmation Card -->
+        <div class="card shadow mb-4 border-left-danger">
+            <div class="card-header bg-danger text-white">
+                <h6 class="m-0 font-weight-bold">
+                    <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning" role="alert">
+                    <strong>¡Advertencia!</strong> Esta acción no se puede deshacer.
+                </div>
+
+                <p class="mb-3">
+                    ¿Está seguro de que desea eliminar el siguiente curso?
+                </p>
+
+                <div class="border rounded p-3 mb-4 bg-light">
+                    <p class="mb-2"><strong>Nombre del Curso:</strong> <span id="courseNameDisplay">-</span></p>
+                    <p class="mb-2"><strong>Profesor:</strong> <span id="courseAdminDisplay">-</span></p>
+                    <p class="mb-0"><strong>ID:</strong> <span id="courseIdDisplay">-</span></p>
+                </div>
+
+                <div class="form-group">
+                    <label class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="confirmDelete">
+                        <span class="custom-control-label">
+                            Confirmo que deseo eliminar este curso y todos sus datos relacionados
+                        </span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <button id="deleteBtn" type="button" class="btn btn-danger" disabled>
+                        <i class="fas fa-trash"></i> Eliminar Permanentemente
+                    </button>
+                    <a href="/admin/courses" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let ADMIN_API_PREFIX = '/api/admin';
+    // Extract course_id from URL
+    const courseId = new URLSearchParams(window.location.search).get('course_id') || 
+                     window.location.pathname.split('/').pop();
+
+    function authHeaders() {
+        const token = localStorage.getItem('access_token');
+        return {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    function showMessage(message, type = 'success') {
+        const container = document.getElementById('messageContainer');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        `;
+        container.innerHTML = '';
+        container.appendChild(alert);
+        if (type === 'success') setTimeout(() => alert.remove(), 5000);
+    }
+
+    async function detectAdminApiPrefix() {
+        const prefixes = ['/api/admin', '/admin/api'];
+        for (const prefix of prefixes) {
+            try {
+                const res = await fetch(`${prefix}/profile`, { headers: authHeaders() });
+                if (res.ok) {
+                    ADMIN_API_PREFIX = prefix;
+                    return;
+                }
+            } catch (e) { }
+        }
+    }
+
+    async function loadCourseData() {
+        try {
+            await detectAdminApiPrefix();
+            const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}`, { headers: authHeaders() });
+            
+            if (!res.ok) {
+                showMessage('Error al cargar el curso', 'danger');
+                return;
+            }
+
+            const course = await res.json();
+            document.getElementById('courseNameDisplay').textContent = course.name;
+            document.getElementById('courseAdminDisplay').textContent = 
+                `${course.admin?.first_name || ''} ${course.admin?.last_name || ''}`;
+            document.getElementById('courseIdDisplay').textContent = course.id;
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger');
+        }
+    }
+
+    document.getElementById('confirmDelete').addEventListener('change', (e) => {
+        document.getElementById('deleteBtn').disabled = !e.target.checked;
+    });
+
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+        try {
+            const res = await fetch(`${ADMIN_API_PREFIX}/courses/${courseId}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+
+            if (res.ok) {
+                showMessage('Curso eliminado correctamente', 'success');
+                setTimeout(() => {
+                    window.location.href = "/admin/courses";
+                }, 1500);
+            } else {
+                const data = await res.json();
+                showMessage(data.error || 'Error al eliminar curso', 'danger');
+            }
+        } catch (e) {
+            console.error('Error:', e);
+            showMessage('Error de conexión', 'danger');
+        }
+    });
+
+    // Load data on page load
+    document.addEventListener('DOMContentLoaded', loadCourseData);
+</script>
+{% endblock %}
