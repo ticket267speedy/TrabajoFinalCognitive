@@ -373,165 +373,183 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const toggle = document.getElementById('chatbot-toggle');
-    const window_ = document.getElementById('chatbot-window');
-    const minimize = document.getElementById('chatbot-minimize');
-    const close = document.getElementById('chatbot-close');
-    const input = document.getElementById('chatbot-input');
-    const send = document.getElementById('chatbot-send');
-    const messages = document.getElementById('chatbot-messages');
-    const header = document.getElementById('chatbot-header');
+(function() {
+    // Inicializar chatbot inmediatamente
+    const initChatbot = () => {
+        const toggle = document.getElementById('chatbot-toggle');
+        const window_ = document.getElementById('chatbot-window');
+        const minimize = document.getElementById('chatbot-minimize');
+        const close = document.getElementById('chatbot-close');
+        const input = document.getElementById('chatbot-input');
+        const send = document.getElementById('chatbot-send');
+        const messages = document.getElementById('chatbot-messages');
+        const header = document.getElementById('chatbot-header');
 
-    let isMinimized = false;
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    // Toggle chat window
-    toggle.addEventListener('click', function() {
-        if (window_.classList.contains('hidden')) {
-            window_.classList.remove('hidden');
-            if (isMinimized) {
-                window_.classList.add('minimized');
-            }
-            input.focus();
-        } else {
-            toggle.click();
+        if (!toggle || !window_ || !input || !send || !messages) {
+            console.error('❌ Elementos del chatbot no encontrados');
+            return;
         }
-    });
 
-    // Minimize
-    minimize.addEventListener('click', function(e) {
-        e.stopPropagation();
-        isMinimized = !isMinimized;
-        window_.classList.toggle('minimized');
-        minimize.textContent = isMinimized ? '▲' : '−';
-    });
+        console.log('✅ Chatbot: elementos encontrados');
 
-    // Close
-    close.addEventListener('click', function(e) {
-        e.stopPropagation();
-        window_.classList.add('hidden');
-    });
+        let isMinimized = false;
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
 
-    // Send message
-    send.addEventListener('click', sendMessage);
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        // Función para enviar mensaje
+        const sendMessage = async () => {
+            const text = input.value.trim();
+            if (!text) return;
+
+            console.log('📤 Enviando:', text);
+
+            // Mostrar mensaje del usuario
+            const userMsgDiv = document.createElement('div');
+            userMsgDiv.className = 'chatbot-message user-message';
+            userMsgDiv.innerHTML = `<div class="message-content">${text}</div>`;
+            messages.appendChild(userMsgDiv);
+            messages.scrollTop = messages.scrollHeight;
+
+            input.value = '';
+            send.disabled = true;
+
+            // Mostrar loading
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'chatbot-message bot-message chatbot-loading';
+            loadingDiv.id = 'loading-message';
+            loadingDiv.innerHTML = '<div class="message-content"><span></span><span></span><span></span></div>';
+            messages.appendChild(loadingDiv);
+            messages.scrollTop = messages.scrollHeight;
+
+            try {
+                // Obtener rol del token
+                const token = localStorage.getItem('access_token');
+                let userRole = 'client';
+                if (token) {
+                    try {
+                        const parts = token.split('.');
+                        const payload = JSON.parse(atob(parts[1]));
+                        userRole = payload.role || 'client';
+                    } catch (e) {
+                        console.error('Error parsing token');
+                    }
+                }
+
+                const res = await fetch('/api/chatbot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, role: userRole })
+                });
+
+                const data = await res.json();
+                const loading = document.getElementById('loading-message');
+                if (loading) loading.remove();
+
+                const botMsgDiv = document.createElement('div');
+                botMsgDiv.className = 'chatbot-message bot-message';
+                botMsgDiv.innerHTML = `<div class="message-content">${data.response || 'Sin respuesta'}</div>`;
+                messages.appendChild(botMsgDiv);
+                messages.scrollTop = messages.scrollHeight;
+
+                console.log('✅ Respuesta recibida');
+            } catch (error) {
+                console.error('❌ Error:', error);
+                const loading = document.getElementById('loading-message');
+                if (loading) loading.remove();
+
+                const errMsgDiv = document.createElement('div');
+                errMsgDiv.className = 'chatbot-message bot-message';
+                errMsgDiv.innerHTML = '<div class="message-content">Error de conexión. Intenta más tarde.</div>';
+                messages.appendChild(errMsgDiv);
+                messages.scrollTop = messages.scrollHeight;
+            } finally {
+                send.disabled = false;
+                input.focus();
+            }
+        };
+
+        // Event listeners
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window_.classList.contains('hidden')) {
+                window_.classList.remove('hidden');
+                input.focus();
+                console.log('✅ Chat abierto');
+            } else {
+                window_.classList.add('hidden');
+                console.log('✅ Chat cerrado');
+            }
+        });
+
+        if (minimize) {
+            minimize.addEventListener('click', (e) => {
+                e.stopPropagation();
+                isMinimized = !isMinimized;
+                window_.classList.toggle('minimized');
+                minimize.textContent = isMinimized ? '▲' : '−';
+            });
+        }
+
+        if (close) {
+            close.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window_.classList.add('hidden');
+            });
+        }
+
+        // Click en botón enviar
+        send.addEventListener('click', (e) => {
             e.preventDefault();
             sendMessage();
-        }
-    });
+        });
 
-    async function sendMessage() {
-        const text = input.value.trim();
-        if (!text) return;
-
-        // User message
-        addMessage(text, 'user');
-        input.value = '';
-        send.disabled = true;
-
-        // Show loading
-        showLoading();
-
-        try {
-            const response = await fetch('/api/chatbot', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message: text })
-            });
-
-            const data = await response.json();
-            removeLoading();
-
-            if (response.ok) {
-                addMessage(data.response || 'Sin respuesta', 'bot');
-            } else {
-                addMessage('Error al procesar la solicitud. Intenta más tarde.', 'bot');
+        // Enter en input
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
             }
-        } catch (error) {
-            removeLoading();
-            console.error('Error:', error);
-            addMessage('Error de conexión. Intenta más tarde.', 'bot');
-        } finally {
-            send.disabled = false;
-            input.focus();
+        });
+
+        // Drag
+        const startDrag = (e) => {
+            if (e.target.closest('.chatbot-controls')) return;
+            isDragging = true;
+            const rect = window_.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+        };
+
+        const drag = (e) => {
+            if (!isDragging) return;
+            let x = e.clientX - offsetX;
+            let y = e.clientY - offsetY;
+            x = Math.max(0, Math.min(x, window.innerWidth - window_.offsetWidth));
+            y = Math.max(0, Math.min(y, window.innerHeight - window_.offsetHeight));
+            window_.style.bottom = 'auto';
+            window_.style.right = 'auto';
+            window_.style.left = x + 'px';
+            window_.style.top = y + 'px';
+        };
+
+        const stopDrag = () => { isDragging = false; };
+
+        if (header) {
+            header.addEventListener('mousedown', startDrag);
         }
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', stopDrag);
+
+        console.log('✅ Chatbot completamente inicializado');
+    };
+
+    // Ejecutar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initChatbot);
+    } else {
+        initChatbot();
     }
-
-    function addMessage(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `chatbot-message ${sender}-message`;
-
-        const content = document.createElement('div');
-        content.className = 'message-content';
-        content.textContent = text;
-
-        messageDiv.appendChild(content);
-        messages.appendChild(messageDiv);
-
-        // Scroll al final
-        messages.scrollTop = messages.scrollHeight;
-    }
-
-    function showLoading() {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'chatbot-message bot-message chatbot-loading';
-        messageDiv.id = 'loading-message';
-
-        const content = document.createElement('div');
-        content.className = 'message-content';
-        content.innerHTML = '<span></span><span></span><span></span>';
-
-        messageDiv.appendChild(content);
-        messages.appendChild(messageDiv);
-        messages.scrollTop = messages.scrollHeight;
-    }
-
-    function removeLoading() {
-        const loading = document.getElementById('loading-message');
-        if (loading) loading.remove();
-    }
-
-    // Drag functionality
-    header.addEventListener('mousedown', startDrag);
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', stopDrag);
-
-    function startDrag(e) {
-        if (e.target.closest('.chatbot-controls')) return;
-
-        isDragging = true;
-        const rect = window_.getBoundingClientRect();
-        offsetX = e.clientX - rect.left;
-        offsetY = e.clientY - rect.top;
-    }
-
-    function drag(e) {
-        if (!isDragging) return;
-
-        let newX = e.clientX - offsetX;
-        let newY = e.clientY - offsetY;
-
-        // Limitar al viewport
-        newX = Math.max(0, Math.min(newX, window.innerWidth - window_.offsetWidth));
-        newY = Math.max(0, Math.min(newY, window.innerHeight - window_.offsetHeight));
-
-        window_.style.bottom = 'auto';
-        window_.style.right = 'auto';
-        window_.style.left = newX + 'px';
-        window_.style.top = newY + 'px';
-    }
-
-    function stopDrag() {
-        isDragging = false;
-    }
-
-    // Keep chatbot on page changes (SPA)
-    // El widget persiste automáticamente porque está en el layout.html
-});
+})();
 </script>

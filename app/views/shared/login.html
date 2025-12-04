@@ -233,6 +233,7 @@
             }
             
             localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('userData', JSON.stringify(data.user));
             setMessage('Ingreso exitoso. Redirigiendo…', 'success');
             
             setTimeout(() => {

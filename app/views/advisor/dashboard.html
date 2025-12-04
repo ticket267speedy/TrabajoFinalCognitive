@@ -1,217 +1,325 @@
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dashboard Asesor</title>
-    <!-- KaiAdmin / Bootstrap CSS -->
-    <link rel="stylesheet" href="/kaiadmin/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="/kaiadmin/css/plugins.min.css" />
-    <link rel="stylesheet" href="/kaiadmin/css/kaiadmin.min.css" />
-    <link rel="stylesheet" href="/kaiadmin/css/fonts.min.css" />
-    <link rel="stylesheet" href="/static/css/theme.css" />
-  </head>
-  <body class="bg-light">
-    <!-- Navbar superior -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
-      <div class="container-fluid">
-        <span class="navbar-brand fw-semibold">Dashboard del Asesor</span>
-        <div class="ms-auto">
-          <button id="logoutBtn" class="btn btn-outline-secondary">Cerrar sesión</button>
+{% extends "layout.html" %}
+{% block title %}Dashboard Asesor - CogniPass{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dashboard Asesor de Becas</h1>
+    </div>
+
+    <!-- KPI Cards Row -->
+    <div class="row mb-4">
+        <!-- Total Becarios -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-2">Estudiantes Becarios</h6>
+                            <h3 class="mb-0" id="totalScholarship">0</h3>
+                        </div>
+                        <div class="text-primary" style="font-size: 2.5rem;">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </nav>
-    <main class="container-fluid py-4">
-      <div class="row g-4">
-        <!-- Becarios -->
-        <section class="col-lg-6">
-          <div class="card h-100" aria-labelledby="becariosTitle">
-            <div class="card-header"><h2 id="becariosTitle" class="h6 m-0">Becarios</h2></div>
-            <div class="card-body">
-              <div class="d-flex gap-2 align-items-center mb-3">
-                <input id="searchStudents" type="search" class="form-control" placeholder="Buscar por nombre o email" />
-                <button id="refreshStudents" class="btn btn-secondary">Actualizar</button>
-              </div>
-              <ul id="studentsList" class="list-group" aria-live="polite"></ul>
-              <div id="studentsMsg" class="mt-2 text-muted"></div>
-            </div>
-          </div>
-        </section>
 
-        <!-- Alertas -->
-        <section class="col-lg-6">
-          <div class="card h-100" aria-labelledby="alertsTitle">
-            <div class="card-header"><h2 id="alertsTitle" class="h6 m-0">Alertas</h2></div>
-            <div class="card-body">
-              <div class="d-flex gap-2 align-items-center mb-3">
-                <button id="refreshAlerts" class="btn btn-secondary">Actualizar</button>
-              </div>
-              <ul id="alertsList" class="list-group" aria-live="polite"></ul>
-              <div id="alertsMsg" class="mt-2 text-muted"></div>
+        <!-- Unread Alerts -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-2">Alertas No Leídas</h6>
+                            <h3 class="mb-0" id="unreadAlerts">0</h3>
+                        </div>
+                        <div class="text-warning" style="font-size: 2.5rem;">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </section>
-      </div>
-    </main>
+        </div>
 
-    <script>
-      const token = localStorage.getItem('access_token');
-      function authHeaders() {
+        <!-- Courses with Scholars -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-2">Cursos con Becarios</h6>
+                            <h3 class="mb-0" id="coursesCount">0</h3>
+                        </div>
+                        <div class="text-success" style="font-size: 2.5rem;">
+                            <i class="fas fa-book"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <!-- Estudiantes Becarios Card -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Estudiantes Becarios</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-8">
+                            <input id="searchStudents" type="search" class="form-control form-control-sm" 
+                                   placeholder="Buscar por nombre o email">
+                        </div>
+                        <div class="col-sm-4">
+                            <button id="refreshStudents" class="btn btn-primary btn-sm btn-block">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    <div id="studentsLoading" class="text-center text-muted py-4">
+                        <i class="fas fa-spinner fa-spin"></i> Cargando...
+                    </div>
+                    <ul id="studentsList" class="list-group" style="display:none;"></ul>
+                    <div id="studentsMsg" class="mt-2 text-muted small"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas Card -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Alertas Recientes</h6>
+                </div>
+                <div class="card-body">
+                    <button id="refreshAlerts" class="btn btn-primary btn-sm mb-3">
+                        <i class="fas fa-sync-alt"></i> Actualizar
+                    </button>
+                    <div id="alertsLoading" class="text-center text-muted py-4">
+                        <i class="fas fa-spinner fa-spin"></i> Cargando...
+                    </div>
+                    <ul id="alertsList" class="list-group" style="display:none;"></ul>
+                    <div id="alertsMsg" class="mt-2 text-muted small"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Widget Row -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-comment-dots"></i> Asistente CogniPass
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="chatbot-widget"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/chatbot-widget.js') }}"></script>
+
+<script>
+    const token = localStorage.getItem('access_token');
+    
+    // Redirect to login if no token found
+    if (!token) {
+        window.location.href = '/login';
+    }
+
+    function authHeaders() {
         const h = { 'Content-Type': 'application/json' };
         if (token) h['Authorization'] = `Bearer ${token}`;
         return h;
-      }
+    }
 
-      // Render helpers
-      function renderStudents(items) {
+    // Render Students
+    function renderStudents(items) {
         const list = document.getElementById('studentsList');
+        const loading = document.getElementById('studentsLoading');
+        const msg = document.getElementById('studentsMsg');
+        
         list.innerHTML = '';
+        loading.style.display = 'none';
+        msg.textContent = '';
+        
         if (!items || items.length === 0) {
-          list.innerHTML = '<li class="list-group-item">No hay becarios para mostrar.</li>';
-          return;
+            list.innerHTML = '<li class="list-group-item text-muted">No hay becarios registrados.</li>';
+            list.style.display = 'block';
+            return;
         }
+        
+        list.style.display = 'block';
         for (const s of items) {
-          const li = document.createElement('li');
-          const name = `${s.first_name || ''} ${s.last_name || ''}`.trim();
-          li.className = 'list-group-item d-flex justify-content-between align-items-center';
-          li.innerHTML = `
-            <span>
-              <strong>${name || '(Sin nombre)'}</strong>
-              <span class="badge bg-success ms-2">Becario</span>
-              <div class="small text-muted">${s.email || ''}</div>
-            </span>
-            <span>
-              <button class="btn btn-outline-secondary btn-sm" onclick="viewStudent(${s.id})">Ver</button>
-            </span>
-          `;
-          list.appendChild(li);
+            const li = document.createElement('li');
+            const name = `${s.first_name || ''} ${s.last_name || ''}`.trim();
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.innerHTML = `
+                <div>
+                    <strong>${name || '(Sin nombre)'}</strong>
+                    <span class="badge badge-success ml-2">Becario</span>
+                    <div class="small text-muted mt-1">${s.email || ''}</div>
+                </div>
+            `;
+            list.appendChild(li);
         }
-      }
+    }
 
-      function renderAlerts(items) {
+    // Render Alerts
+    function renderAlerts(items) {
         const list = document.getElementById('alertsList');
+        const loading = document.getElementById('alertsLoading');
+        const msg = document.getElementById('alertsMsg');
+        
         list.innerHTML = '';
+        loading.style.display = 'none';
+        msg.textContent = '';
+        
         if (!items || items.length === 0) {
-          list.innerHTML = '<li class="list-group-item">No hay alertas.</li>';
-          return;
+            list.innerHTML = '<li class="list-group-item text-muted">No hay alertas.</li>';
+            list.style.display = 'block';
+            return;
         }
+        
+        list.style.display = 'block';
         for (const a of items) {
-          const li = document.createElement('li');
-          const name = `${a.student_first_name || ''} ${a.student_last_name || ''}`.trim();
-          const status = a.is_read ? '<span class="badge bg-secondary">Leída</span>' : '<span class="badge bg-success">Nueva</span>';
-          li.className = 'list-group-item d-flex justify-content-between align-items-center';
-          li.innerHTML = `
-            <span>
-              <strong>${name || '(Becario)'}</strong>
-              <div class="small text-muted">${a.message || 'Alerta'}</div>
-            </span>
-            <span class="d-flex align-items-center gap-2">
-              ${status}
-              ${a.is_read ? '' : `<button class="btn btn-outline-primary btn-sm" onclick="markAlertRead(${a.id})">Marcar leído</button>`}
-            </span>
-          `;
-          list.appendChild(li);
+            const li = document.createElement('li');
+            const name = a.student ? `${a.student.first_name || ''} ${a.student.last_name || ''}`.trim() : '(Becario)';
+            const status = a.is_read 
+                ? '<span class="badge badge-secondary">Leída</span>' 
+                : '<span class="badge badge-danger">Nueva</span>';
+            const date = a.created_at ? new Date(a.created_at).toLocaleString('es-ES') : '';
+            
+            li.className = 'list-group-item';
+            li.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <strong>${name}</strong>
+                        <div class="small text-muted mt-1">${a.message || 'Alerta'}</div>
+                        <div class="small text-muted mt-1">${date}</div>
+                    </div>
+                    <div class="ml-2 text-right">
+                        ${status}
+                        ${a.is_read ? '' : `<button class="btn btn-sm btn-outline-primary mt-2" onclick="markAlertRead(${a.id})">Marcar</button>`}
+                    </div>
+                </div>
+            `;
+            list.appendChild(li);
         }
-      }
+    }
 
-      // API calls
-      async function fetchStudents() {
+    // Fetch Summary
+    async function fetchSummary() {
+        try {
+            const res = await fetch('/dashboard/api/summary', { headers: authHeaders() });
+            if (!res.ok) throw new Error('Error al cargar resumen');
+            const data = await res.json();
+            
+            if (data.ok && data.data) {
+                document.getElementById('totalScholarship').textContent = data.data.total_scholarship_students || 0;
+                document.getElementById('unreadAlerts').textContent = data.data.unread_alerts || 0;
+                document.getElementById('coursesCount').textContent = data.data.courses_with_scholars || 0;
+            }
+        } catch (err) {
+            console.error('Error en resumen:', err);
+        }
+    }
+
+    // Fetch Students
+    async function fetchStudents() {
         const msg = document.getElementById('studentsMsg');
         msg.textContent = '';
+        
         try {
-          const res = await fetch('/api/asesores/students?scholarship=true', { headers: authHeaders() });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error || 'Error al cargar becarios');
-          renderStudents(data.items || data.students || []);
+            const res = await fetch('/dashboard/api/students', { headers: authHeaders() });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error || 'Error al cargar becarios');
+            renderStudents(data.data || []);
         } catch (err) {
-          msg.textContent = err.message || 'Error al cargar becarios';
-          msg.className = 'msg error';
+            msg.textContent = '❌ ' + err.message;
+            msg.className = 'text-danger small';
+            document.getElementById('studentsList').style.display = 'none';
+            document.getElementById('studentsLoading').style.display = 'none';
         }
-      }
+    }
 
-      // Filtra solo alertas de asistencia (faltas o poco tiempo en clase)
-      function isAttendanceAlert(message) {
-        const msg = (message || '').toLowerCase();
-        const includeKeywords = [
-          'falta', // faltas
-          'asistencia',
-          'entrada',
-          'salida',
-          'tardanza',
-          'minutos',
-          'horas',
-          'tiempo',
-        ];
-        const excludeKeywords = [
-          'rendimiento', // bajo rendimiento en evaluaciones
-          'evaluacion', 'evaluaciones',
-          'laboratorio',
-          'apoyo',
-        ];
-        if (excludeKeywords.some(k => msg.includes(k))) return false;
-        return includeKeywords.some(k => msg.includes(k));
-      }
-
-      async function fetchAlerts() {
+    // Fetch Alerts
+    async function fetchAlerts() {
         const msg = document.getElementById('alertsMsg');
         msg.textContent = '';
+        
         try {
-          const res = await fetch('/api/alerts?scholarship=true', { headers: authHeaders() });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error || 'Error al cargar alertas');
-          const items = data.items || data.alerts || [];
-          const filtered = items.filter(a => isAttendanceAlert(a.message));
-          renderAlerts(filtered);
+            const res = await fetch('/dashboard/api/alerts', { headers: authHeaders() });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error || 'Error al cargar alertas');
+            renderAlerts(data.data || []);
         } catch (err) {
-          msg.textContent = err.message || 'Error al cargar alertas';
-          msg.className = 'msg error';
+            msg.textContent = '❌ ' + err.message;
+            msg.className = 'text-danger small';
+            document.getElementById('alertsList').style.display = 'none';
+            document.getElementById('alertsLoading').style.display = 'none';
         }
-      }
+    }
 
-      async function markAlertRead(id) {
+    // Mark Alert Read
+    window.markAlertRead = async function(id) {
         try {
-          const res = await fetch(`/api/alerts/${id}/read`, { method: 'PATCH', headers: authHeaders() });
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || 'No se pudo marcar como leído');
-          }
-          await fetchAlerts();
+            const res = await fetch(`/dashboard/api/alerts/${id}/read`, { 
+                method: 'PATCH', 
+                headers: authHeaders() 
+            });
+            
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'No se pudo marcar como leído');
+            }
+            
+            await fetchAlerts();
+            await fetchSummary();
         } catch (err) {
-          const msg = document.getElementById('alertsMsg');
-          msg.textContent = err.message;
-          msg.className = 'msg error';
+            console.error('Error:', err);
+            alert('Error: ' + err.message);
         }
-      }
+    };
 
-      window.viewStudent = function(id) {
-        alert('Detalle de becario ' + id + ' (pendiente de implementar)');
-      };
-
-      document.getElementById('refreshStudents').addEventListener('click', fetchStudents);
-      document.getElementById('refreshAlerts').addEventListener('click', fetchAlerts);
-      document.getElementById('searchStudents').addEventListener('input', (e) => {
+    // Event Listeners
+    document.getElementById('refreshStudents').addEventListener('click', fetchStudents);
+    document.getElementById('refreshAlerts').addEventListener('click', fetchAlerts);
+    
+    document.getElementById('searchStudents').addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
-        const items = Array.from(document.querySelectorAll('#studentsList li'));
+        const items = document.querySelectorAll('#studentsList li');
         for (const li of items) {
-          li.style.display = li.textContent.toLowerCase().includes(term) ? '' : 'none';
+            li.style.display = li.textContent.toLowerCase().includes(term) ? '' : 'none';
         }
-      });
+    });
 
-      // Initial load
-      fetchStudents();
-      fetchAlerts();
-
-
-      // Logout
-      document.getElementById('logoutBtn').addEventListener('click', () => {
-        localStorage.removeItem('access_token');
-        window.location.href = '/login';
-      });
-    </script>
-    <!-- KaiAdmin / Bootstrap JS -->
-    <script src="/kaiadmin/js/core/jquery-3.7.1.min.js"></script>
-    <script src="/kaiadmin/js/core/popper.min.js"></script>
-    <script src="/kaiadmin/js/core/bootstrap.min.js"></script>
-    <script src="/kaiadmin/js/kaiadmin.min.js"></script>
-  </body>
-  </html>
+    // Initial Load
+    window.addEventListener('load', () => {
+        fetchSummary();
+        fetchStudents();
+        fetchAlerts();
+        
+        // Refresh every 30 seconds
+        setInterval(fetchSummary, 30000);
+        setInterval(fetchAlerts, 30000);
+    });
+</script>
+{% endblock %}

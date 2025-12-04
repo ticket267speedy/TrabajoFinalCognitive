@@ -1,0 +1,158 @@
+{% extends "layout.html" %}
+
+{% block title %}Estudiantes Becarios{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Estudiantes Becarios</h1>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Lista de Estudiantes Monitoreados</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Search Bar -->
+                    <div class="mb-3">
+                        <input 
+                            type="text" 
+                            id="studentSearch" 
+                            class="form-control" 
+                            placeholder="Buscar por nombre o email..."
+                        >
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loadingIndicator" class="spinner-border text-primary" role="status" style="display:none;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div id="errorMsg" class="alert alert-danger" role="alert" style="display:none;"></div>
+
+                    <!-- Students List -->
+                    <div id="studentsList" style="display:none;">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="emptyState" class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3 text-muted"></i>
+                        <p>No hay estudiantes becarios para mostrar.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const token = localStorage.getItem('access_token');
+    
+    // Redirect to login if no token found
+    if (!token) {
+        window.location.href = '/login';
+    }
+
+    function authHeaders() {
+        const h = { 'Content-Type': 'application/json' };
+        if (token) h['Authorization'] = `Bearer ${token}`;
+        return h;
+    }
+
+    async function loadStudents() {
+        const loading = document.getElementById('loadingIndicator');
+        const errorMsg = document.getElementById('errorMsg');
+        const studentsList = document.getElementById('studentsList');
+        const emptyState = document.getElementById('emptyState');
+        const tableBody = document.getElementById('studentsTableBody');
+
+        loading.style.display = 'block';
+        errorMsg.style.display = 'none';
+        studentsList.style.display = 'none';
+        emptyState.style.display = 'none';
+        tableBody.innerHTML = '';
+
+        try {
+            const res = await fetch('/dashboard/api/students', { headers: authHeaders() });
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Error al cargar estudiantes');
+            }
+
+            const items = data.data || data.items || data.students || [];
+
+            if (items.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                items.forEach(student => {
+                    const tr = document.createElement('tr');
+                    const name = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+                    
+                    tr.innerHTML = `
+                        <td><strong>${name || '(Sin nombre)'}</strong></td>
+                        <td>${student.email || 'N/A'}</td>
+                        <td><span class="badge bg-success">Becario</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewStudentDetail(${student.id})">
+                                <i class="fas fa-eye"></i> Ver
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+                
+                studentsList.style.display = 'block';
+                attachSearchListener(items);
+            }
+        } catch (err) {
+            errorMsg.textContent = err.message || 'Error al cargar estudiantes';
+            errorMsg.style.display = 'block';
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+
+    function attachSearchListener(items) {
+        const searchInput = document.getElementById('studentSearch');
+        const tableBody = document.getElementById('studentsTableBody');
+
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const rows = tableBody.querySelectorAll('tr');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(term) ? '' : 'none';
+            });
+        });
+    }
+
+    function viewStudentDetail(studentId) {
+        alert(`Ver detalles del estudiante ${studentId}`);
+        // TODO: Implementar modal o página de detalles
+    }
+
+    // Load students on page load
+    document.addEventListener('DOMContentLoaded', loadStudents);
+</script>
+{% endblock %}

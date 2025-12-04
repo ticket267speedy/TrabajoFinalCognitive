@@ -29,7 +29,7 @@
         <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
             <!-- Sidebar - Brand -->
-            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ url_for('admin.admin_dashboard_view') }}">
+            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="#" id="dashboardBrand">
                 <div class="sidebar-brand-icon rotate-n-15">
                     <i class="fas fa-graduation-cap"></i>
                 </div>
@@ -41,7 +41,7 @@
 
             <!-- Nav Item - Dashboard -->
             <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('admin.admin_dashboard_view') }}">
+                <a class="nav-link" href="#" id="dashboardLink">
                     <i class="fas fa-fw fa-tachometer-alt"></i>
                     <span>Dashboard</span></a>
             </li>
@@ -54,32 +54,46 @@
                 Gestión
             </div>
 
-            <!-- Nav Item - Estudiantes -->
-            <li class="nav-item">
+            <!-- Nav Item - Estudiantes (Admin) -->
+            <li class="nav-item admin-menu">
                 <a class="nav-link" href="/admin/students">
                     <i class="fas fa-fw fa-users"></i>
                     <span>Estudiantes</span></a>
             </li>
 
-            <!-- Nav Item - Cursos -->
-            <li class="nav-item">
+            <!-- Nav Item - Cursos (Admin) -->
+            <li class="nav-item admin-menu">
                 <a class="nav-link" href="/admin/courses">
                     <i class="fas fa-fw fa-book"></i>
                     <span>Cursos</span></a>
             </li>
 
-            <!-- Nav Item - Sesiones de clase -->
-            <li class="nav-item">
+            <!-- Nav Item - Sesiones de clase (Admin) -->
+            <li class="nav-item admin-menu">
                 <a class="nav-link" href="/admin/class-session">
                     <i class="fas fa-fw fa-video"></i>
                     <span>Sesiones de clase</span></a>
             </li>
 
-            <!-- Nav Item - Asistencia -->
-            <li class="nav-item">
+            <!-- Nav Item - Asistencia (Admin) -->
+            <li class="nav-item admin-menu">
                 <a class="nav-link" href="/admin/attendance">
                     <i class="fas fa-fw fa-clipboard-list"></i>
                     <span>Asistencia</span></a>
+            </li>
+
+            <!-- Nav Item - Estudiantes Becarios (Client) -->
+            <li class="nav-item client-menu" style="display:none;">
+                <a class="nav-link" href="/dashboard/students">
+                    <i class="fas fa-fw fa-users"></i>
+                    <span>Estudiantes</span></a>
+            </li>
+
+            <!-- Nav Item - Cursos (Client) -->
+            <li class="nav-item client-menu" style="display:none;">
+                <a class="nav-link" href="/dashboard/courses">
+                    <i class="fas fa-fw fa-book"></i>
+                    <span>Cursos</span></a>
             </li>
 
             <!-- Divider -->
@@ -90,9 +104,16 @@
                 Cuenta
             </div>
 
-            <!-- Nav Item - Configuración -->
-            <li class="nav-item">
+            <!-- Nav Item - Configuración (Admin) -->
+            <li class="nav-item admin-menu">
                 <a class="nav-link" href="{{ url_for('admin.admin_profile_view') }}">
+                    <i class="fas fa-fw fa-cogs"></i>
+                    <span>Configuración</span></a>
+            </li>
+
+            <!-- Nav Item - Configuración (Client) -->
+            <li class="nav-item client-menu" style="display:none;">
+                <a class="nav-link" href="/dashboard/profile">
                     <i class="fas fa-fw fa-cogs"></i>
                     <span>Configuración</span></a>
             </li>
@@ -217,10 +238,63 @@
 
     <!-- Logout handler (shared for both topbar and sidebar) -->
     <script>
+        // Detectar rol del usuario y mostrar menú correspondiente
+        function setupMenuByRole() {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+            
+            try {
+                // Decodificar JWT (sin verificar firma, solo para obtener el rol)
+                const parts = token.split('.');
+                if (parts.length !== 3) return;
+                
+                const payload = JSON.parse(atob(parts[1]));
+                const role = payload.role;
+                
+                // Actualizar href del Dashboard según rol
+                const dashboardBrand = document.getElementById('dashboardBrand');
+                const dashboardLink = document.getElementById('dashboardLink');
+                
+                const navigateToDashboard = (e) => {
+                    e.preventDefault();
+                    if (role === 'admin') {
+                        window.location.href = '/admin/';
+                    } else if (role === 'client') {
+                        window.location.href = '/dashboard/';
+                    }
+                };
+                
+                dashboardBrand.addEventListener('click', navigateToDashboard);
+                dashboardLink.addEventListener('click', navigateToDashboard);
+                
+                // Mostrar/ocultar menús según el rol
+                const adminMenus = document.querySelectorAll('.admin-menu');
+                const clientMenus = document.querySelectorAll('.client-menu');
+                
+                if (role === 'admin') {
+                    adminMenus.forEach(m => m.style.display = '');
+                    clientMenus.forEach(m => m.style.display = 'none');
+                } else if (role === 'client') {
+                    adminMenus.forEach(m => m.style.display = 'none');
+                    clientMenus.forEach(m => m.style.display = '');
+                }
+                
+                // Actualizar nombre de usuario
+                const topbarUserName = document.getElementById('topbarUserName');
+                if (topbarUserName) {
+                    topbarUserName.textContent = role === 'admin' ? 'Profesor' : 'Asesor de Becas';
+                }
+            } catch (e) {
+                console.error('Error al decodificar token:', e);
+            }
+        }
+        
+        setupMenuByRole();
+        
         document.getElementById('logoutLink').addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.removeItem('access_token');
-            window.location.href = '/admin/login';
+            window.location.href = '/login';
         });
         
         // Also for dropdown logout
@@ -229,7 +303,7 @@
             logoutDropdown.addEventListener('click', (e) => {
                 e.preventDefault();
                 localStorage.removeItem('access_token');
-                window.location.href = '/admin/login';
+                window.location.href = '/login';
             });
         }
     </script>

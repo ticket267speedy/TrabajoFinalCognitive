@@ -1,0 +1,182 @@
+{% extends "layout.html" %}
+
+{% block title %}Configuración de Perfil{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Configuración de Perfil</h1>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Información de Cuenta</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Loading State -->
+                    <div id="loadingIndicator" class="spinner-border text-primary" role="status" style="display:none;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+
+                    <!-- Success Message -->
+                    <div id="successMsg" class="alert alert-success" role="alert" style="display:none;"></div>
+
+                    <!-- Error Message -->
+                    <div id="errorMsg" class="alert alert-danger" role="alert" style="display:none;"></div>
+
+                    <!-- Profile Info -->
+                    <div id="profileInfo" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre Completo</label>
+                            <input type="text" class="form-control" id="fullName" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Rol</label>
+                            <input type="text" class="form-control" id="role" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fecha de Registro</label>
+                            <input type="text" class="form-control" id="createdAt" disabled>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="emptyState" class="text-center text-muted py-4">
+                        <i class="fas fa-user fa-3x mb-3 text-muted"></i>
+                        <p>Cargando información de perfil...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Section -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Seguridad</h6>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-outline-primary" id="changePasswordBtn">
+                        <i class="fas fa-key"></i> Cambiar Contraseña
+                    </button>
+                    <button class="btn btn-outline-danger" id="logoutBtn">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Info -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Información de Cuenta</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <strong>Estado:</strong> 
+                        <span class="badge bg-success">Activo</span>
+                    </p>
+                    <p class="mb-2">
+                        <strong>Tipo de Usuario:</strong> 
+                        <span id="userType" class="badge bg-info">Cargando...</span>
+                    </p>
+                    <hr>
+                    <p class="small text-muted">
+                        Para cambiar tu información de cuenta, contacta al administrador.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const token = localStorage.getItem('access_token');
+    
+    // Redirect to login if no token found
+    if (!token) {
+        window.location.href = '/login';
+    }
+
+    function authHeaders() {
+        const h = { 'Content-Type': 'application/json' };
+        if (token) h['Authorization'] = `Bearer ${token}`;
+        return h;
+    }
+
+    async function loadProfile() {
+        const loading = document.getElementById('loadingIndicator');
+        const errorMsg = document.getElementById('errorMsg');
+        const profileInfo = document.getElementById('profileInfo');
+        const emptyState = document.getElementById('emptyState');
+
+        loading.style.display = 'block';
+        errorMsg.style.display = 'none';
+        profileInfo.style.display = 'none';
+        emptyState.style.display = 'block';
+
+        try {
+            // Try to get user info from the login response (stored after login)
+            // For now, we'll show a placeholder
+            const fullNameEl = document.getElementById('fullName');
+            const emailEl = document.getElementById('email');
+            const roleEl = document.getElementById('role');
+            const createdAtEl = document.getElementById('createdAt');
+            const userTypeEl = document.getElementById('userType');
+
+            // Get from localStorage if available
+            const userDataStr = localStorage.getItem('userData');
+            if (userDataStr) {
+                try {
+                    const userData = JSON.parse(userDataStr);
+                    fullNameEl.value = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'No disponible';
+                    emailEl.value = userData.email || 'No disponible';
+                    roleEl.value = userData.role || 'No disponible';
+                    createdAtEl.value = userData.created_at ? new Date(userData.created_at).toLocaleDateString('es-ES') : 'No disponible';
+                    
+                    const roleDisplay = userData.role === 'advisor' ? 'Asesor' : userData.role === 'client' ? 'Cliente' : 'Administrador';
+                    userTypeEl.textContent = roleDisplay;
+                    userTypeEl.className = 'badge ' + 
+                        (userData.role === 'admin' ? 'bg-danger' : userData.role === 'advisor' ? 'bg-info' : 'bg-primary');
+
+                    profileInfo.style.display = 'block';
+                    emptyState.style.display = 'none';
+                } catch (e) {
+                    throw new Error('Error al procesar datos de usuario');
+                }
+            } else {
+                throw new Error('No hay información de usuario disponible');
+            }
+        } catch (err) {
+            errorMsg.textContent = err.message || 'Error al cargar perfil';
+            errorMsg.style.display = 'block';
+            emptyState.style.display = 'none';
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+
+    // Event listeners
+    document.getElementById('changePasswordBtn')?.addEventListener('click', () => {
+        alert('Funcionalidad de cambio de contraseña próximamente');
+    });
+
+    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('userData');
+        window.location.href = '/login';
+    });
+
+    // Load profile on page load
+    document.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+{% endblock %}

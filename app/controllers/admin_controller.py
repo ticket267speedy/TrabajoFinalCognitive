@@ -6,6 +6,7 @@ from ..models import User, Course, Enrollment, Student, Attendance, Alert
 import os
 from datetime import datetime, date
 from sqlalchemy.orm import joinedload
+from functools import wraps
 
 admin_bp = Blueprint("admin", __name__)
 admin_api_bp = Blueprint("admin_api", __name__)
@@ -17,7 +18,37 @@ def admin_login_view():
     """Redirige al login único"""
     return redirect("/login")
 
+def admin_required(f):
+    """Decorador para proteger vistas que requieren rol admin"""
+    @wraps(f)
+    @jwt_required()
+    def decorated(*args, **kwargs):
+        user_id = get_jwt_identity()
+        
+        try:
+            # Convertir a int si es necesario
+            try:
+                user_id = int(user_id)
+            except (ValueError, TypeError):
+                pass
+            
+            user = User.query.get(user_id)
+            if not user:
+                return redirect(url_for('shared.login_view'))
+            
+            # Verificar rol
+            role_value = user.role if not hasattr(user.role, 'value') else user.role.value
+            if role_value != 'admin':
+                return redirect(url_for('shared.login_view'))
+        except Exception as e:
+            print(f"Error en admin_required: {str(e)}")
+            return redirect(url_for('shared.login_view'))
+        
+        return f(*args, **kwargs)
+    return decorated
+
 @admin_bp.get("/")
+@admin_required
 def admin_dashboard_view():
     """Vista del dashboard principal del administrador"""
     total_students = Student.query.count()

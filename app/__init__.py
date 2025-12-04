@@ -49,7 +49,7 @@ def create_app(config_class: type = Config) -> Flask:
     app.register_blueprint(admin_bp, url_prefix="/admin")
     # API del administrador (legacy)
     app.register_blueprint(admin_api_bp, url_prefix="/api")
-    # Rutas del asesor
+    # Rutas del cliente/asesor
     app.register_blueprint(advisor_bp, url_prefix="/dashboard")
     # API legacy (reconocimiento facial)
     app.register_blueprint(api_bp, url_prefix="/api")
