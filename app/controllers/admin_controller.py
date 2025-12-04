@@ -605,29 +605,20 @@ def get_admin_attendance():
             Attendance.course_id.in_(course_ids)
         ).order_by(Attendance.date.desc(), Attendance.course_id).all()
         
-        attendance_data = []
-        for record in attendance_records:
-            try:
-                student = Student.query.get(record.student_id)
-                course = Course.query.get(record.course_id)
-                attendance_data.append({
-                    "id": record.id,
-                    "student_name": f"{student.first_name} {student.last_name}" if student else "Unknown",
-                    "course_name": course.name if course else "Unknown",
-                    "date": record.date.isoformat(),
-                    "entry_time": str(record.entry_time) if record.entry_time else None,
-                    "exit_time": str(record.exit_time) if record.exit_time else None,
-                    "status": record.status
-                })
-            except Exception as att_error:
-                print(f"Error procesando asistencia {record.id}: {att_error}")
-                continue
+        # Usar el método to_dict() de cada registro para serialización segura
+        attendance_data = [record.to_dict() for record in attendance_records]
         
         return jsonify({"data": attendance_data})
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        error_msg = str(e)
+        error_trace = traceback.format_exc()
+        print(f"ERROR en get_admin_attendance: {error_msg}")
+        print(error_trace)
+        return jsonify({
+            "error": "Error al obtener asistencia",
+            "detail": error_msg
+        }), 500
 
 @admin_api_bp.get("/admin/courses/<int:course_id>/students")
 @jwt_required()
@@ -703,28 +694,20 @@ def get_course_attendance(course_id: int):
             Attendance.date == today
         ).all()
         
-        attendance_data = []
-        for record in attendance_records:
-            try:
-                student = Student.query.get(record.student_id)
-                attendance_data.append({
-                    "id": record.id,
-                    "student_id": record.student_id,
-                    "student_name": f"{student.first_name} {student.last_name}" if student else "Unknown",
-                    "entry_time": str(record.entry_time) if record.entry_time else None,
-                    "exit_time": str(record.exit_time) if record.exit_time else None,
-                    "status": record.status,
-                    "date": record.date.isoformat()
-                })
-            except Exception as att_error:
-                print(f"Error procesando asistencia {record.id}: {att_error}")
-                continue
+        # Usar el método to_dict() de cada registro para serialización segura
+        attendance_data = [record.to_dict() for record in attendance_records]
         
         return jsonify({"data": attendance_data})
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        error_msg = str(e)
+        error_trace = traceback.format_exc()
+        print(f"ERROR en get_course_attendance: {error_msg}")
+        print(error_trace)
+        return jsonify({
+            "error": "Error al obtener asistencia del curso",
+            "detail": error_msg
+        }), 500
 
 @admin_api_bp.patch("/admin/attendance/<int:attendance_id>")
 @jwt_required()

@@ -1,21 +1,4 @@
 from flask import Blueprint, request, jsonify, current_app, Response, stream_with_context
-import cv2
-import time
-import subprocess
-import threading
-import sys
-import os
-from datetime import datetime
-from werkzeug.security import generate_password_hash
-from werkzeug.security import check_password_hash
-from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
-from ..extensions import db
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
-
-# Importaciones pesadas movidas a importación perezosa dentro de funciones
-from flask import Blueprint, request, jsonify, current_app, Response, stream_with_context
-import cv2
 import time
 import subprocess
 import threading

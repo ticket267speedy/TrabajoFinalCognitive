@@ -1,14 +1,18 @@
 import os
-import cv2
 import numpy as np
 from datetime import datetime
-import face_recognition
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FOTOS_DIR = os.path.join(PROJECT_ROOT, "fotos_conocidas")
 MODELO_PATH = os.path.join(PROJECT_ROOT, "modelo_caras.pkl")
 
 def generar_modelo():
+    try:
+        import face_recognition
+    except ImportError:
+        print("face_recognition no está instalado")
+        return False
+    
     import pickle
     if not os.path.isdir(FOTOS_DIR):
         return False
