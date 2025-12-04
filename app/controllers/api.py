@@ -456,7 +456,6 @@ def chatbot_endpoint():
     """Endpoint para el chatbot GPT."""
     try:
         from ..ai.chatbot.gpt_service import GPTChatbotService
-        from openai import AuthenticationError, RateLimitError, APIError
 
         data = request.get_json(silent=True) or {}
         message = data.get("message", "")
