@@ -48,7 +48,6 @@ def admin_required(f):
     return decorated
 
 @admin_bp.get("/")
-@admin_required
 def admin_dashboard_view():
     """Vista del dashboard principal del administrador"""
     total_students = Student.query.count()

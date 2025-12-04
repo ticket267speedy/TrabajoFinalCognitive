@@ -192,9 +192,19 @@
     let metricsAreaChart = null;
     let coursesPieChart = null;
 
+    const token = localStorage.getItem('access_token');
+    console.log('Token encontrado:', token ? 'SÍ' : 'NO', 'Token:', token ? token.substring(0, 50) + '...' : 'null');
+    
+    // Redirigir al login si no hay token - ESTO DEBE SER LO PRIMERO
+    if (!token) {
+        console.log('Sin token, redirigiendo a login');
+        window.location.href = '/login';
+    }
+
     function authHeaders() {
-        const token = localStorage.getItem('access_token');
-        return token ? { 'Authorization': `Bearer ${token}` } : {};
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        console.log('Auth headers:', headers ? 'Con Authorization' : 'Sin Authorization');
+        return headers;
     }
 
     async function detectAdminApiPrefix() {

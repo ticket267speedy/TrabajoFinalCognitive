@@ -170,13 +170,11 @@
         alert('Funcionalidad de cambio de contraseña próximamente');
     });
 
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+      document.getElementById('logoutBtn')?.addEventListener('click', () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('userData');
         window.location.href = '/login';
-    });
-
-    // Load profile on page load
+      });    // Load profile on page load
     document.addEventListener('DOMContentLoaded', loadProfile);
 </script>
 {% endblock %}

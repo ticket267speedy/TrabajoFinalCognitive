@@ -51,7 +51,11 @@
     <script>
       const token = localStorage.getItem('access_token');
       function authHeaders() { const h = { 'Content-Type': 'application/json' }; if (token) h['Authorization'] = `Bearer ${token}`; return h; }
-      document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem('access_token'); window.location.href = '/admin/login'; });
+      document.getElementById('logoutBtn').addEventListener('click', () => { 
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('userData');
+        window.location.href = '/admin/login'; 
+      });
 
       function getCourseIdFromPath() {
         // URL: /course/<id>/people

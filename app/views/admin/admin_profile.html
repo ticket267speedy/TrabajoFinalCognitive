@@ -82,11 +82,18 @@
 
     <script>
       const token = localStorage.getItem('access_token');
+      
+      // Redirigir al login si no hay token
+      if (!token) {
+        window.location.href = '/login';
+      }
+      
       function authHeadersJSON() { const h = { 'Content-Type': 'application/json' }; if (token) h['Authorization'] = `Bearer ${token}`; return h; }
       function authHeadersForm() { const h = {}; if (token) h['Authorization'] = `Bearer ${token}`; return h; }
 
       document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.removeItem('access_token');
+        localStorage.removeItem('userData');
         window.location.href = '/login';
       });
 
