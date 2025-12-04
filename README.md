@@ -1,171 +1,225 @@
-# TrabajoFinalCognitive
+# CogniPass - Plataforma de Asistencia con Reconocimiento Facial
 
-Sistema de asesoría y gestión de asistencia de estudiantes construido con Flask. Ofrece APIs y vistas autenticadas con JWT para dos roles (administrador y asesor), gestión de cursos y matrículas, alertas y un endpoint de salud. El repositorio incluye una versión simplificada en la raíz (sin funciones de IA) y una variante más completa en `TrabajoFinalCognitive1/` que integra AWS Rekognition para flujos basados en imágenes.
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-2.0+-green.svg)](https://flask.palletsprojects.com)
+[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-2.0%20Flash-orange.svg)](https://ai.google.dev)
+
+## Descripción
+
+**CogniPass** es una plataforma web para gestionar asistencia de estudiantes becados utilizando reconocimiento facial automático. Permite a profesores registrar la asistencia de forma eficiente y a asesores de becas monitorear el rendimiento en tiempo real.
 
 ## Características Principales
-- Autenticación con JWT (`/api/login`) y endpoints por rol
-- Dashboard y perfil de administrador, gestión de cursos y estudiantes
-- Dashboard del asesor, listas de becarios, gestión de alertas y resumen
-- Migraciones de base de datos con Alembic/Flask-Migrate
-- Soporte para MySQL (preferido) o SQLite vía `DATABASE_URL`
-- Docker Compose para despliegue local rápido (proyecto raíz)
+
+- **Reconocimiento Facial Automático**: Detección y registro automático de asistencia usando cámara web
+- **Panel de Profesor**: Crear cursos, gestionar estudiantes, iniciar sesiones de clase
+- **Dashboard de Asesor**: Monitoreo de asistencia, alertas de faltas, reportes de becarios
+- **Asistente IA (Chatbot Gemini)**: Soporte automático en español sobre la plataforma
+- **Autenticación JWT**: Control de acceso seguro por rol (Profesor/Asesor)
+- **Interfaz Responsiva**: Diseño adaptado para escritorio y móvil
 
 ## Stack Tecnológico
-- Backend: `Flask`, `Flask-SQLAlchemy`, `Flask-Migrate`, `Flask-JWT-Extended`, `Flask-CORS`
-- Autenticación: tokens JWT Bearer
-- Base de datos: MySQL 8 (por defecto en Docker) o SQLite
-- Servidor: `gunicorn` para producción
-- IA opcional (solo en `TrabajoFinalCognitive1/`): `boto3` con AWS Rekognition
 
-## Estructura del Repositorio (proyecto raíz)
-- `app/` — Aplicación Flask (factory, controladores, modelos, servicios, vistas)
-- `migrations/` — Scripts de migración Alembic
-- `run.py` — Punto de entrada del servidor de desarrollo
-- `requirements.txt` — Dependencias de Python (sin IA)
-- `.env` — Variables de entorno (URL de BD, secretos)
-- `Dockerfile`, `docker-compose.yml` — Contenedores para la app y MySQL
-- `update_db.py` — Script opcional para sembrar/restablecer datos de demo
+### Backend
+- **Framework**: Flask (Python 3.10+)
+- **Base de Datos**: PostgreSQL
+- **ORM**: SQLAlchemy
+- **Migraciones**: Alembic
 
-El segundo proyecto está en `TrabajoFinalCognitive1/`, con estructura similar pero servicios de IA y recursos de OpenCV en `PROYECTO/`.
+### Frontend
+- **Bootstrap 5**: Interfaz responsive
+- **Chart.js**: Visualización de estadísticas
+- **JavaScript Vanilla**: Interactividad
 
-## Variables de Entorno
-Defínelas en `.env` en la raíz del proyecto:
-- `SECRET_KEY` — Llave secreta de Flask
-- `JWT_SECRET_KEY` — Llave de firma JWT
-- `DATABASE_URL` — Ejemplos: `mysql+pymysql://root:root@db:3306/proyecto_final` (Docker) o `mysql+pymysql://root:@localhost:3306/proyecto_final` (local)
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` — No usadas por la app raíz (IA deshabilitada); sí por `TrabajoFinalCognitive1/` si ejecutas esa variante.
+### IA
+- **Google Gemini 2.0 Flash**: Modelo de lenguaje para chatbot
+- **OpenCV**: Detección de rostros
 
-Si falta `DATABASE_URL`, se usa por defecto `sqlite:///app.db`.
+## Instalación y Ejecución
 
-## Inicio Rápido (Docker)
-Requisitos: Docker Desktop.
+### Requisitos Previos
+- Python 3.10+
+- PostgreSQL 12+
+- pip / pip3
+- Git
 
-TrabajoFinalCognitive
+### Paso 1: Clonar el Repositorio
 
-Resumen
--------
-TrabajoFinalCognitive es una aplicación backend construida con Flask para la gestión de asistencia académica y la administración de cursos. Provee APIs protegidas con JWT para dos roles principales (administrador y asesor), gestión de estudiantes y cursos, control de sesiones y un endpoint de salud.
-
-Estructura de carpetas (resumen)
---------------------------------
-- `app/`                    : Código principal de la aplicación (factory, blueprints, modelos, servicios, vistas)
-- `migrations/`             : Scripts de migración de la base de datos (Alembic/Flask-Migrate)
-- `run.py`                  : Punto de entrada para ejecutar la app en desarrollo
-- `requirements.txt`        : Dependencias de Python
-- `.env`                    : Variables de entorno (no versionar con Git)
-- `docker-compose.yml`      : Configuración de Docker Compose (app + base de datos)
-- `archived_docs/`          : Documentación antigua trasladada (no forma parte del README activo)
-
-Funcionamiento básico
-----------------------
-1. Configurar variables de entorno en `.env` (ejemplo mínimo):
-
-   SECRET_KEY=changeme
-   JWT_SECRET_KEY=changeme
-   DATABASE_URL="sqlite:///app.db"   # o URL a MySQL/Postgres
-
-2. Entorno virtual e instalación de dependencias:
-
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   pip install -r requirements.txt
-
-3. Ejecutar migraciones (si aplica):
-
-   flask db upgrade
-
-4. Iniciar la aplicación en desarrollo:
-
-   python run.py
-
-   Por defecto la app escucha en `http://127.0.0.1:7000` o en la dirección configurada en las variables `HOST`/`PORT`.
-
-Endpoints relevantes
---------------------
-- `GET /health`                       : Health check, devuelve `{ "status": "ok" }`.
-- `POST /api/chatbot`                 : Endpoint del chatbot (si está configurado con una API key válida en `.env`).
-- `POST /api/login`                   : Autenticación y emisión de token JWT.
-- Rutas de administrador bajo `/admin` : Panel y vistas del administrador.
-- APIs bajo `/api`                    : Rutas REST para estudiantes, cursos, asistencia, etc.
-
-Gestión del chatbot
---------------------
-- La integración con proveedores de IA se configura mediante variables de entorno (por ejemplo `GOOGLE_API_KEY` para Google Gemini o `OPENAI_API_KEY` para OpenAI). No incluya claves en archivos `.md` ni en el repositorio.
-- Si usa Gemini, instale `google-generativeai` y configure `GOOGLE_API_KEY` en `.env`.
-
-Buenas prácticas
-----------------
-- No versionar archivos que contengan claves o secretos. Use `.env` y exclúyalo con `.gitignore`.
-- Para producción, utilice un servidor WSGI (gunicorn, waitress, etc.) en lugar del servidor de desarrollo de Flask.
-- Revise `archived_docs/` si necesita información histórica; todo lo útil ha sido consolidado en este `README.md`.
-
-Comentarios finales
-------------------
-Este README está pensado como el documento principal para entender la estructura del proyecto y los pasos básicos para ejecutar y probar la aplicación localmente. Si desea que agregue secciones más detalladas (por ejemplo: despliegue en Docker, configuración avanzada del chatbot, o endpoints API documentados con ejemplos), indíquelo y lo añado.
-
-### Archivos Modificados
-
-| Archivo | Cambio |
-|---------|--------|
-| `app/templates/layout.html` | ✨ Nuevo (base template con estructura de SB Admin 2) |
-| `app/views/admin/admin_dashboard.html` | ♻️ Refactorizado (ahora extiende `layout.html`) |
-| `app/static/` | ➕ Assets de SB Admin 2 (vendor, css, js, img) |
-
-### Archivos Sin Cambios
-
-- `app/controllers/admin_controller.py` — Rutas y lógica backend intactas
-- `app/controllers/api.py` — Endpoints de API sin modificar
-- `app/models/`, `app/services/`, `app/repositories/` — Datos y lógica de negocio sin cambios
-- Todas las funcionalidades REST y de autenticación se mantienen
-
-### Cómo Usar la Nueva Estructura
-
-#### Para extender el dashboard con nuevas páginas admin:
-
-1. Crea una nueva plantilla en `app/views/admin/`:
-```html
-{% extends "layout.html" %}
-
-{% block title %}Mi Nueva Página - CogniPass{% endblock %}
-
-{% block content %}
-<h1>Contenido de mi página</h1>
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Mi Sección</h6>
-    </div>
-    <div class="card-body">
-        <!-- Tu contenido aquí -->
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    // Tu lógica JavaScript aquí
-</script>
-{% endblock %}
+```bash
+git clone https://github.com/ticket267speedy/TrabajoFinalCognitive.git
+cd TrabajoFinalCognitive
 ```
 
-2. Declara la ruta en `app/controllers/admin_controller.py`:
-```python
-@admin_bp.get("/mi-pagina")
-def mi_nueva_pagina():
-    return render_template("admin/mi_nueva_pagina.html")
+### Paso 2: Configurar Variables de Entorno
+
+```bash
+cp .env.example .env
 ```
 
-#### Para personalizar la sidebar:
+Edita `.env` y configura:
+```ini
+# Base de datos
+DATABASE_URL=postgresql://usuario:contraseña@host:5432/cognipass
 
-Edita `app/templates/layout.html` en la sección de navegación (busca `<!-- Nav Item - ...`).
+# Seguridad
+SECRET_KEY=tu_clave_secreta_aqui
+JWT_SECRET_KEY=tu_jwt_secret_aqui
 
-### Ventajas de la Migración
+# Google Gemini (Chatbot)
+GOOGLE_API_KEY=tu_api_key_google_aqui
+GEMINI_MODEL=gemini-2.0-flash
 
-✅ Interfaz visual moderna y profesional  
-✅ Sistema responsive (móvil, tablet, desktop)  
-✅ Componentes Bootstrap 4 reutilizables  
-✅ Menú sidebar colapsible para optimizar espacio  
-✅ Topbar integrada con información del usuario  
-✅ Mantenimiento de toda la funcionalidad anterior  
-✅ Facilita agregar nuevas páginas admin en el futuro  
+# Flask
+FLASK_ENV=development
+FLASK_APP=run.py
+PORT=7000
+```
+
+**Nota**: Obtén tu API Key de Google en: https://aistudio.google.com/app/apikey
+
+### Paso 3: Crear Entorno Virtual
+
+```bash
+python -m venv venv
+
+# En Windows
+venv\Scripts\activate
+
+# En Linux/Mac
+source venv/bin/activate
+```
+
+### Paso 4: Instalar Dependencias
+
+```bash
+pip install -r requirements.txt
+```
+
+### Paso 5: Inicializar Base de Datos
+
+```bash
+flask db upgrade
+```
+
+### Paso 6: Ejecutar la Aplicación
+
+```bash
+python run.py
+```
+
+La aplicación estará disponible en: **http://127.0.0.1:7000**
+
+## Uso
+
+### Para Profesores
+1. Login con credenciales de profesor
+2. Crear o seleccionar un curso
+3. Iniciar sesión de clase (activa cámara)
+4. El sistema registra asistencia automáticamente
+5. Si falla la cámara, marcar manualmente
+
+### Para Asesores de Becas
+1. Login con credenciales de asesor
+2. Ver lista de becarios bajo supervisión
+3. Monitorear alertas de faltas
+4. Acceder a reportes detallados
+
+### Chatbot IA
+- Pregunta sobre funcionalidades de CogniPass
+- Responde en español
+- Rechaza preguntas fuera de tema amablemente
+
+## Estructura del Proyecto
+
+```
+TrabajoFinalCognitive/
+├── app/
+│   ├── __init__.py              # App factory
+│   ├── config.py                # Configuración
+│   ├── models/                  # Modelos de BD
+│   │   ├── student.py
+│   │   ├── course.py
+│   │   ├── attendance.py
+│   │   └── user.py
+│   ├── controllers/             # Rutas y lógica
+│   │   ├── admin_controller.py
+│   │   ├── advisor_controller.py
+│   │   └── api.py
+│   ├── services/                # Servicios
+│   │   ├── attendance_service.py
+│   │   ├── face_recognition_service.py
+│   │   └── chatbot_service.py
+│   ├── ai/chatbot/              # Chatbot Gemini
+│   │   ├── gpt_service.py       # Servicio IA
+│   │   ├── faq_es.csv           # Base de FAQs
+│   │   └── __init__.py
+│   ├── views/                   # Templates HTML
+│   ├── static/                  # CSS, JS, imágenes
+│   └── repositories/            # Acceso a datos
+├── migrations/                  # Migraciones DB (Alembic)
+├── run.py                       # Punto de entrada
+├── requirements.txt             # Dependencias
+├── .env.example                 # Variables de entorno
+├── docker-compose.yml           # Compose para Docker
+├── Dockerfile                   # Container
+└── README.md                    # Este archivo
+```
+
+## Sistema de Chatbot IA
+
+El chatbot utiliza **Google Gemini 2.0 Flash** para proporcionar soporte automático:
+
+### Funcionalidades
+- Responde preguntas sobre CogniPass
+- Guía en procesos de la plataforma
+- Rechaza preguntas fuera de tema
+- Responde siempre en español
+
+### Configuración
+El sistema prompt está en `app/ai/chatbot/gpt_service.py`
+
+### FAQs
+Las preguntas frecuentes se cargan desde `app/ai/chatbot/faq_es.csv`
+
+## Configuración Avanzada
+
+### Docker (Opcional)
+```bash
+docker-compose up -d
+```
+
+## Troubleshooting
+
+### Error de conexión a BD
+- Verifica que PostgreSQL esté corriendo
+- Revisa `DATABASE_URL` en `.env`
+
+### Chatbot no responde
+- Verifica `GOOGLE_API_KEY` en `.env`
+- Revisa que sea una API Key válida
+- Verifica conexión a internet
+
+### Reconocimiento facial no funciona
+- Verifica permisos de cámara web
+- Instala opencv-python: `pip install opencv-python`
+
+## Endpoints API
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/api/login` | Autenticación de usuario |
+| GET | `/api/admin/profile` | Perfil del profesor |
+| GET | `/api/admin/metrics` | Métricas generales |
+| POST | `/api/chatbot` | Consultar al chatbot IA |
+| GET | `/api/advisor/alerts` | Alertas para asesor |
+
+## Licencia
+
+Este proyecto está bajo la licencia MIT.
+
+## Autor
+
+**Trabajo Final Cognitivev5** - Sistema de asistencia con IA
 
 ---
+
+**Última actualización**: Diciembre 2025
