@@ -66,6 +66,7 @@
 {% block extra_js %}
 <script>
     const token = localStorage.getItem('access_token');
+    console.log('🔐 Token en localStorage:', token ? token.substring(0, 20) + '...' : 'NO EXISTE');
     
     // Redirect to login if no token found
     if (!token) {
@@ -74,7 +75,10 @@
 
     function authHeaders() {
         const h = { 'Content-Type': 'application/json' };
-        if (token) h['Authorization'] = `Bearer ${token}`;
+        if (token) {
+            h['Authorization'] = `Bearer ${token}`;
+            console.log('📝 Authorization header:', h['Authorization'].substring(0, 30) + '...');
+        }
         return h;
     }
 
@@ -92,14 +96,22 @@
         tableBody.innerHTML = '';
 
         try {
+            console.log('📚 Iniciando carga de estudiantes...');
+            console.log('📌 Token:', token ? 'existe' : 'NO EXISTE');
+            console.log('📌 Headers:', authHeaders());
+            
             const res = await fetch('/dashboard/api/students', { headers: authHeaders() });
+            console.log('📊 Response status:', res.status, res.statusText);
+            
             const data = await res.json().catch(() => ({}));
+            console.log('📊 Response data:', data);
 
             if (!res.ok) {
-                throw new Error(data.error || 'Error al cargar estudiantes');
+                throw new Error(data.error || `Error al cargar estudiantes (${res.status})`);
             }
 
             const items = data.data || data.items || data.students || [];
+            console.log('📊 Estudiantes encontrados:', items.length);
 
             if (items.length === 0) {
                 emptyState.style.display = 'block';
@@ -125,6 +137,7 @@
                 attachSearchListener(items);
             }
         } catch (err) {
+            console.error('❌ Error:', err);
             errorMsg.textContent = err.message || 'Error al cargar estudiantes';
             errorMsg.style.display = 'block';
         } finally {

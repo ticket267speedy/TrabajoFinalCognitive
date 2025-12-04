@@ -172,11 +172,11 @@
                             </a>
                             <!-- Dropdown - User Information -->
                             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="{{ url_for('admin.admin_profile_view') }}">
+                                <a class="dropdown-item" href="#" id="profileDropdownLink">
                                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Mi Perfil
                                 </a>
-                                <a class="dropdown-item" href="{{ url_for('admin.admin_profile_view') }}">
+                                <a class="dropdown-item" href="#" id="configDropdownLink">
                                     <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Configuración
                                 </a>
@@ -251,7 +251,30 @@
                 const payload = JSON.parse(atob(parts[1]));
                 const role = payload.role;
                 
-                // Actualizar href del Dashboard según rol
+                // Configurar dropdown de perfil dinámicamente
+                const profileLink = document.getElementById('profileDropdownLink');
+                const configLink = document.getElementById('configDropdownLink');
+                if (profileLink && configLink) {
+                    const handleProfileClick = (e) => {
+                        e.preventDefault();
+                        if (role === 'admin') {
+                            window.location.href = '/admin/profile';
+                        } else if (role === 'client') {
+                            window.location.href = '/dashboard/profile';
+                        }
+                    };
+                    const handleConfigClick = (e) => {
+                        e.preventDefault();
+                        if (role === 'admin') {
+                            window.location.href = '/admin/profile';
+                        } else if (role === 'client') {
+                            window.location.href = '/dashboard/profile';
+                        }
+                    };
+                    profileLink.addEventListener('click', handleProfileClick);
+                    configLink.addEventListener('click', handleConfigClick);
+                }
+                
                 const dashboardBrand = document.getElementById('dashboardBrand');
                 const dashboardLink = document.getElementById('dashboardLink');
                 

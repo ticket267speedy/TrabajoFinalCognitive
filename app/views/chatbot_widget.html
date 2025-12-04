@@ -507,11 +507,27 @@
 
         // Enter en input
         input.addEventListener('keydown', (e) => {
+            console.log('🔍 Keydown detectado:', e.key, 'Shift:', e.shiftKey);
             if (e.key === 'Enter' && !e.shiftKey) {
+                console.log('✅ Enter detectado en keydown, enviando mensaje');
                 e.preventDefault();
                 sendMessage();
             }
         });
+        
+        // También escuchar keypress como fallback para navegadores antiguos
+        input.addEventListener('keypress', (e) => {
+            console.log('🔍 Keypress detectado:', e.key);
+            if (e.key === 'Enter' && !e.shiftKey) {
+                console.log('✅ Enter detectado en keypress, enviando mensaje');
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Verificar que el botón send también funciona
+        console.log('📌 Input element:', input ? 'OK' : 'NO ENCONTRADO');
+        console.log('📌 Send button:', send ? 'OK' : 'NO ENCONTRADO');
 
         // Drag
         const startDrag = (e) => {

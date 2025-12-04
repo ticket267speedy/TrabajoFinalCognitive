@@ -71,6 +71,7 @@
 {% block extra_js %}
 <script>
     const token = localStorage.getItem('access_token');
+    console.log('🔐 Token en localStorage:', token ? token.substring(0, 20) + '...' : 'NO EXISTE');
     
     // Redirect to login if no token found
     if (!token) {
@@ -79,7 +80,10 @@
 
     function authHeaders() {
         const h = { 'Content-Type': 'application/json' };
-        if (token) h['Authorization'] = `Bearer ${token}`;
+        if (token) {
+            h['Authorization'] = `Bearer ${token}`;
+            console.log('📝 Authorization header:', h['Authorization'].substring(0, 30) + '...');
+        }
         return h;
     }
 
@@ -91,9 +95,14 @@
         const totalCourses = document.getElementById('totalCourses');
 
         try {
+            console.log('📚 Iniciando carga de cursos...');
+            console.log('📌 Token:', token ? 'existe' : 'NO EXISTE');
+            
             // Fetch courses data from summary endpoint
             const res = await fetch('/dashboard/api/summary', { headers: authHeaders() });
             
+            console.log('📊 Response status:', res.status, res.statusText);
+
             if (!res.ok) {
                 throw new Error('Error al cargar datos de cursos');
             }

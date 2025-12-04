@@ -55,7 +55,6 @@ def client_courses_view():
     return render_template("client/courses.html")
 
 @advisor_bp.get("/profile")
-@advisor_bp.get("/profile")
 def client_profile_view():
     """Vista de perfil para el cliente"""
     return render_template("client/profile.html")
